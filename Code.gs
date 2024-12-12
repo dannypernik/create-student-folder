@@ -274,7 +274,238 @@ function isEmptyFolder(folderId) {
   }
 }
 
+function createRwRevSheet() {
+  createRevSheet('RW', 0);
+}
+
+function createMathRevSheet() {
+  createRevSheet('Math', 1)
+}
+
+function createRevSheet(sub, subIndex) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var revBackend = ss.getSheetByName('Rev sheet backend');
+  var revSheet = ss.getSheetByName(sub + ' Rev sheet');
+  var revData = ss.getSheetByName('Rev sheets');
+  var subBackendOffset = subIndex * 4;
+  var rwFolderRange = revBackend.getRange(2, 3);
+  var mathFolderRange = revBackend.getRange(2, 7);
+  var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
+  var revSheetFolderId = folderIdRange.getValue();
+
+  try {
+    DriveApp.getFolderById(revSheetFolderId);
+  }
+  catch {
+    revSheetFolderId = ''
+    folderIdRange.setValue(revSheetFolderId);
+    Logger.log('invalid folder ID in ' + folderIdRange);
+  }
+  
+  if (revSheetFolderId === '') {
+    var ui = SpreadsheetApp.getUi();
+    var folderUrl = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)').getResponseText();
+    if (folderUrl) {
+      var parentFolderId = folderUrl.replace(/^.+\//, '');
+      var parentFolder = DriveApp.getFolderById(parentFolderId);
+    }
+    else {
+      var parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+      var parentFolderId = parentFolder.getId();
+    }
+
+    if (rwFolderRange.getValue() === '' && mathFolderRange.getValue() === '') {
+      isRevFolderDistinct = ui.alert('Do you want to have separate folders for this student\'s RW and Math Rev sheets?', ui.ButtonSet.YES_NO_CANCEL);
+      if (isRevFolderDistinct == ui.Button.YES) {
+        revSheetFolderId = parentFolder.createFolder(sub + ' Rev sheets').getId();
+        folderIdRange.setValue(revSheetFolderId);
+      }
+      else {
+        revSheetFolderId = parentFolder.createFolder('Rev sheets').getId();
+        mathFolderRange.setValue(revSheetFolderId);
+        rwFolderRange.setValue(revSheetFolderId);
+      }
+    };
+  }
+
+  revSheet.showRows(1,revSheet.getMaxRows());
+  revBackend.getRange(2, 2 + subBackendOffset, revBackend.getLastRow() - 1).clear();
+  revBackend.getRange(2, 2 + subBackendOffset).setValue('=RANDARRAY(counta(A$2:A))');
+  SpreadsheetApp.flush();
+  revBackend.getRange(2, 2 + subBackendOffset, revBackend.getMaxRows() - 1).copyValuesToRange(revBackend.getSheetId(), 2+subBackendOffset, 2+subBackendOffset, 2, 2);
+
+  var column = revSheet.getRange('C1:C');
+  var values = column.getValues(); // get all data in one call
+  var columnEWidth = revSheet.getColumnWidth(5);
+  var row = 6;
+
+  try {
+    while ( values[row-1] && values[row-1][0] != "" ) {
+      // get image dimensions
+      var questionId = values[row-1][0];
+      
+      var rowHeight = calculateRowHeight(questionId, columnEWidth, sub)
+      revSheet.setRowHeight(row, rowHeight);
+
+      row++;
+    }
+  }
+  catch(err) {
+    if (err.message.includes('Invalid argument')){
+      SpreadsheetApp.getUi().alert('Error: No missed questions available for ' + revSheet.getRange('C1').getValue());
+    }
+    else {
+      SpreadsheetApp.getUi().alert(err);
+    }
+    return;
+  }
+  
+  var firstEmptyRow = getFirstEmptyRow(revData, 2 + subIndex * 5);
+  if (firstEmptyRow === 4) {
+    var newRevSheetNumber = 1;
+  }
+  else {
+    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 1 + subIndex * 5).getValue().toString();
+    Logger.log(revSheetLastQuestion);
+    var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
+  }
+  revSheet.getRange(3,5).setValue('Rev sheet #' + newRevSheetNumber);
+  Logger.log(firstEmptyRow);
+
+  // hide unneeded rows, column A+G
+  revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
+  revSheet.hideColumns(4);
+  revSheet.hideColumns(7);
+  revSheet.showColumns(1);
+  revSheet.showColumns(6);
+
+  var studentName = revSheet.getRange('A2').getValue();
+  if (studentName === '') {
+    var pdfName = sub + ' Rev sheet #' + newRevSheetNumber;
+  }
+  else {
+    var pdfName = sub + ' Rev sheet #' + newRevSheetNumber + ' for ' + studentName;
+  }
+
+  //* Create worksheets
+  SpreadsheetApp.flush();
+  savePdf(ss, revSheet, pdfName, revSheetFolderId);
+  Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
+  //*/
+
+  revSheet.showColumns(4);
+  revSheet.showColumns(7);
+  revSheet.hideColumns(1);
+  revSheet.hideColumns(6);
+
+  //* Create answer keys
+  SpreadsheetApp.flush();
+  savePdf(ss, revSheet, pdfName + '~Key', revSheetFolderId);
+  Logger.log(sub + ' Rev key #' + newRevSheetNumber + ' saved')
+  //*/
+
+  var dataToCopy = revSheet.getRange(6,2,row-5,2).getValues();
+  revData.getRange(firstEmptyRow, 1 + subIndex * 5, row-5, 2).setValues(dataToCopy);
+
+  revSheet.showRows(1,revSheet.getMaxRows());    
+}
+
+
+function calculateRowHeight(questionId, containerWidth, subject) {
+  var questionUrl = 'https://www.openpathtutoring.com/static/img/concepts/sat/' + subject.toLowerCase() + '/' + encodeURIComponent(questionId) + ".jpg";
+  var urlOptions = {muteHttpExceptions: true};
+  
+  // Add exponential backoff retry logic
+  var maxRetries = 3;
+  var retryCount = 0;
+  var questionImg;
+
+  while (retryCount < maxRetries) {
+    try {
+      questionImg = UrlFetchApp.fetch(questionUrl, urlOptions);
+      break; // Success - exit retry loop
+    } catch (e) {
+      retryCount++;
+      if (retryCount === maxRetries) {
+        SpreadsheetApp.getUi().alert('Failed to fetch image after ' + maxRetries + ' attempts: ' + e.message);
+        return;
+      }
+      // Exponential backoff: wait 2^retryCount * 2000 milliseconds
+      Utilities.sleep(Math.pow(2, retryCount) * 2000);
+    }
+  }
+
+  var questionBlob = questionImg.getBlob();
+  var questionSize = ImgApp.getSize(questionBlob);
+
+  if (subject.toLowerCase() === 'rw') {
+    var whitespace = 40;
+  }
+  else {
+    var whitespace = 60;
+  }
+
+  var rowHeight = questionSize.height / questionSize.width * containerWidth + whitespace;
+
+  return rowHeight;
+}
+
+
+function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
+  var sheetId = sheet.getSheetId();
+  var url_base = spreadsheet.getUrl().replace(/edit$/,'');
+
+  var url_ext = 'export?exportFormat=pdf&format=pdf'
+  + '&gid=' + sheetId
+  // following parameters are optional...
+  + '&size=A4'      // paper size: legal / letter / A4
+  + '&portrait=true'    // orientation, false for landscape
+  + '&fitw=true'        // fit to width, false for actual size
+  + '&top_margin=0.25'
+  + '&bottom_margin=0'
+  + '&left_margin=0.375'
+  + '&right_margin=0.375'
+  + '&sheetnames=false' // 
+  + '&printtitle=false'
+  + '&pagenumbers=false'  //hide optional headers and footers
+  + '&gridlines=false'  // hide gridlines
+  + '&fzr=true';       // false = do not repeat row headers (frozen rows) on each page
+  var url_options = {headers: {'Authorization': 'Bearer ' + ScriptApp.getOAuthToken(),},muteHttpExceptions: true};
+  var response = (function backoff(i) {
+    Utilities.sleep(Math.pow(2, i) * 1000);
+    let data = UrlFetchApp.fetch(url_base + url_ext, url_options);
+    if (data.getResponseCode() !== 200) {
+      return backoff(++i);
+    }
+    else {
+      return data;
+    }
+  })(1);
+  var blob = response.getBlob().getAs('application/pdf').setName(pdfName + '.pdf');
+  var folder = DriveApp.getFolderById(pdfFolderId);
+  folder.createFile(blob);
+}
+
+
+// Adapted from https://stackoverflow.com/a/9102463/1677912
+function getFirstEmptyRow(sheet, colIndex) {
+  var column = sheet.getRange(4, colIndex, sheet.getLastRow() - 3);
+  var values = column.getValues(); // get all data in one call
+  var ct = 0;
+  while ( values[ct] && values[ct][0] != "" ) {
+    ct++;
+  }
+  return (ct+4);  // +4 since starting from row 4 with 0-indexing
+}
+
+
 function onOpen() {
   let ui = SpreadsheetApp.getUi();
-  ui.createMenu('Scripts').addItem('New SAT student', 'NewSatFolder').addItem('New ACT student', 'NewActFolder').addItem('New Test prep student', 'NewTestPrepFolder').addToUi();
+  ui.createMenu('Scripts')
+    .addItem('New SAT student', 'NewSatFolder')
+    .addItem('New ACT student', 'NewActFolder')
+    .addItem('New Test prep student', 'NewTestPrepFolder')
+    .addItem('New RW Rev sheet', 'createRwRevSheet')
+    .addItem('New Math Rev sheet', 'createMathRevSheet')
+    .addToUi();
 }
