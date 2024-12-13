@@ -228,6 +228,8 @@ function linkSheets(folderId, nameOnReport=false) {
               s.getRange('D5').setValue('for ' + nameOnReport)
             }
           }
+          ss.getSheetByName('RW Rev sheets').getRange('A2').setValue(nameOnReport);
+          ss.getSheetByName('Math Rev sheets').getRange('A2').setValue(nameOnReport);
         }
       }
     }
@@ -247,8 +249,9 @@ function linkSheets(folderId, nameOnReport=false) {
     Logger.log(satSheetIds.student);
     Logger.log(satSheetIds.admin);
     SpreadsheetApp.openById(satSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
-    SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
-    SpreadsheetApp.openById(satSheetIds.student).getSheets()[0].getRange('D1').setValue('=importrange("' + satSheetIds.admin + '","Question bank data!V1")');
+    SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
+    // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
+    // SpreadsheetApp.openById(satSheetIds.student).getSheets()[0].getRange('D1').setValue('=importrange("' + satSheetIds.admin + '","Question bank data!V1")');
   }
   Logger.log('actSheetIds.student: ' + actSheetIds.student);
   Logger.log('actSheetIds.admin: ' + actSheetIds.admin);
@@ -361,16 +364,15 @@ function createRevSheet(sub, subIndex) {
   }
   
   var firstEmptyRow = getFirstEmptyRow(revData, 2 + subIndex * 5);
-  if (firstEmptyRow === 4) {
+  if (firstEmptyRow === 5) {
     var newRevSheetNumber = 1;
   }
   else {
-    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 1 + subIndex * 5).getValue().toString();
+    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 2 + subIndex * 5).getValue().toString();
     Logger.log(revSheetLastQuestion);
     var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
   }
   revSheet.getRange(3,5).setValue('Rev sheet #' + newRevSheetNumber);
-  Logger.log(firstEmptyRow);
 
   // hide unneeded rows, column A+G
   revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
@@ -405,7 +407,7 @@ function createRevSheet(sub, subIndex) {
   //*/
 
   var dataToCopy = revSheet.getRange(6,2,row-5,2).getValues();
-  revData.getRange(firstEmptyRow, 1 + subIndex * 5, row-5, 2).setValues(dataToCopy);
+  revData.getRange(firstEmptyRow, 2 + subIndex * 5, row-5, 2).setValues(dataToCopy);
 
   revSheet.showRows(1,revSheet.getMaxRows());    
 }
@@ -489,13 +491,13 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 
 // Adapted from https://stackoverflow.com/a/9102463/1677912
 function getFirstEmptyRow(sheet, colIndex) {
-  var column = sheet.getRange(4, colIndex, sheet.getLastRow() - 3);
+  var column = sheet.getRange(5, colIndex, sheet.getLastRow() - 4);
   var values = column.getValues(); // get all data in one call
   var ct = 0;
   while ( values[ct] && values[ct][0] != "" ) {
     ct++;
   }
-  return (ct+4);  // +4 since starting from row 4 with 0-indexing
+  return (ct+5);  // +5 since starting from row 5 with 0-indexing
 }
 
 

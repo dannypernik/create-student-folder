@@ -1,13 +1,14 @@
 {
   "timeZone": "America/Chicago",
-  "dependencies": {
-    "libraries": [{
-      "userSymbol": "OPTfunctions",
-      "libraryId": "1TkTJCEzhJ1dUyqXMRlj8nOTYTQzvBaaVJH4i9Uq8E2t-kG4gejQEJetW",
-      "version": "0",
-      "developmentMode": true
-    }]
-  },
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "ImgApp",
+        "version": "11",
+        "libraryId": "1T03nYHRho6XMWYcaumClcWr6ble65mAT8OLJqRFJ5lukPVogAN2NDl-y"
+      }
+    ]
+  }
 }
