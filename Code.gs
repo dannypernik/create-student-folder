@@ -8,7 +8,7 @@ function NewSatFolder(nameOnReport=true) {
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
 
-  if(ui.Button.CANCEL) {
+  if(studentName == ui.Button.CANCEL) {
     return;
   }
 
@@ -39,7 +39,7 @@ function NewActFolder(nameOnReport=true) {
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
 
-  if(ui.Button.CANCEL) {
+  if(studentName == ui.Button.CANCEL) {
     return;
   }
 
@@ -73,7 +73,7 @@ function NewTestPrepFolder(nameOnReport=true) {
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
 
-  if(ui.Button.CANCEL) {
+  if(studentName == ui.Button.CANCEL) {
     return;
   }
 
@@ -308,30 +308,35 @@ function createRevSheet(sub, subIndex) {
   var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   var revSheetFolderId = folderIdRange.getValue();
 
+  if (revBackend.getRange(2, 1 + subBackendOffset).getValue() === '#N/A') {
+    var ui = SpreadsheetApp.getUi();
+    ui.alert('Error: No missed questions available for ' + revData.getRange(1, 3 + subIndex * 5).getValue());
+    return;
+  }
+
   try {
     DriveApp.getFolderById(revSheetFolderId);
   }
   catch {
     revSheetFolderId = ''
     folderIdRange.setValue(revSheetFolderId);
-    Logger.log('invalid folder ID in ' + folderIdRange);
+    Logger.log('blank/invalid folder ID in ' + folderIdRange);
   }
   
   if (revSheetFolderId === '') {
     var ui = SpreadsheetApp.getUi();
     var folderUrl = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)', ui.ButtonSet.OK_CANCEL).getResponseText();
 
-    if(ui.Button.CANCEL) {
+    if(folderUrl == ui.Button.CANCEL) {
       return;
     };
 
-    if (folderUrl) {
-      var parentFolderId = folderUrl.replace(/^.+\//, '');
-      var parentFolder = DriveApp.getFolderById(parentFolderId);
+    if (folderUrl === '') {
+      var parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
     }
     else {
-      var parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
-      var parentFolderId = parentFolder.getId();
+      var parentFolderId = folderUrl.replace(/^.+\//, '');
+      var parentFolder = DriveApp.getFolderById(parentFolderId);
     }
 
     if (rwFolderRange.getValue() === '' && mathFolderRange.getValue() === '') {
@@ -348,6 +353,10 @@ function createRevSheet(sub, subIndex) {
       else if (isRevFolderDistinct == ui.Button.CANCEL) {
         return;
       }
+    }
+    else {
+      revSheetFolderId = parentFolder.createFolder(sub + ' Rev sheets').getId();
+      folderIdRange.setValue(revSheetFolderId);
     };
   }
 
@@ -357,9 +366,9 @@ function createRevSheet(sub, subIndex) {
   SpreadsheetApp.flush();
   revBackend.getRange(2, 2 + subBackendOffset, revBackend.getMaxRows() - 1).copyValuesToRange(revBackend.getSheetId(), 2+subBackendOffset, 2+subBackendOffset, 2, 2);
 
-  var column = revSheet.getRange('C1:C');
-  var values = column.getValues(); // get all data in one call
-  var columnEWidth = revSheet.getColumnWidth(5);
+  var idCol = revSheet.getRange('B1:B');
+  var values = idCol.getValues(); // get all data in one call
+  var imgContainerWidth = revSheet.getColumnWidth(4);
   var row = 6;
 
   try {
@@ -367,7 +376,7 @@ function createRevSheet(sub, subIndex) {
       // get image dimensions
       var questionId = values[row-1][0];
       
-      var rowHeight = calculateRowHeight(questionId, columnEWidth, sub)
+      var rowHeight = calculateRowHeight(questionId, imgContainerWidth, sub)
       revSheet.setRowHeight(row, rowHeight);
 
       row++;
@@ -375,7 +384,7 @@ function createRevSheet(sub, subIndex) {
   }
   catch(err) {
     if (err.message.includes('Invalid argument')){
-      SpreadsheetApp.getUi().alert('Error: No missed questions available for ' + revSheet.getRange('C1').getValue());
+      SpreadsheetApp.getUi().alert('Error: Image not found');
     }
     else {
       SpreadsheetApp.getUi().alert(err);
@@ -392,14 +401,13 @@ function createRevSheet(sub, subIndex) {
     Logger.log(revSheetLastQuestion);
     var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
   }
-  revSheet.getRange(3,5).setValue('Rev sheet #' + newRevSheetNumber);
+  revSheet.getRange('E1').setValue(newRevSheetNumber);
 
   // hide unneeded rows, column A+G
   revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
-  revSheet.hideColumns(4);
-  revSheet.hideColumns(7);
-  revSheet.showColumns(1);
-  revSheet.showColumns(6);
+  revSheet.hideColumns(3);
+  revSheet.hideColumns(6);
+  revSheet.showColumns(5);
 
   var studentName = revSheet.getRange('A2').getValue();
   if (studentName === '') {
@@ -415,10 +423,9 @@ function createRevSheet(sub, subIndex) {
   Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
   //*/
 
-  revSheet.showColumns(4);
-  revSheet.showColumns(7);
-  revSheet.hideColumns(1);
-  revSheet.hideColumns(6);
+  revSheet.showColumns(3);
+  revSheet.showColumns(6);
+  revSheet.hideColumns(5);
 
   //* Create answer keys
   SpreadsheetApp.flush();
@@ -426,7 +433,7 @@ function createRevSheet(sub, subIndex) {
   Logger.log(sub + ' Rev key #' + newRevSheetNumber + ' saved')
   //*/
 
-  var dataToCopy = revSheet.getRange(6,2,row-5,2).getValues();
+  var dataToCopy = revSheet.getRange(6,1,row-5,2).getValues();
   revData.getRange(firstEmptyRow, 2 + subIndex * 5, row-5, 2).setValues(dataToCopy);
 
   revSheet.showRows(1,revSheet.getMaxRows());    
