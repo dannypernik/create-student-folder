@@ -8,6 +8,10 @@ function NewSatFolder(nameOnReport=true) {
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
 
+  if(ui.Button.CANCEL) {
+    return;
+  }
+
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
   
@@ -34,6 +38,10 @@ function NewActFolder(nameOnReport=true) {
 
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
+
+  if(ui.Button.CANCEL) {
+    return;
+  }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
@@ -64,6 +72,10 @@ function NewTestPrepFolder(nameOnReport=true) {
 
   var ui = SpreadsheetApp.getUi();
   var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
+
+  if(ui.Button.CANCEL) {
+    return;
+  }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
@@ -307,7 +319,12 @@ function createRevSheet(sub, subIndex) {
   
   if (revSheetFolderId === '') {
     var ui = SpreadsheetApp.getUi();
-    var folderUrl = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)').getResponseText();
+    var folderUrl = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)', ui.ButtonSet.OK_CANCEL).getResponseText();
+
+    if(ui.Button.CANCEL) {
+      return;
+    };
+
     if (folderUrl) {
       var parentFolderId = folderUrl.replace(/^.+\//, '');
       var parentFolder = DriveApp.getFolderById(parentFolderId);
@@ -323,10 +340,13 @@ function createRevSheet(sub, subIndex) {
         revSheetFolderId = parentFolder.createFolder(sub + ' Rev sheets').getId();
         folderIdRange.setValue(revSheetFolderId);
       }
-      else {
+      else if (isRevFolderDistinct == ui.Button.NO) {
         revSheetFolderId = parentFolder.createFolder('Rev sheets').getId();
         mathFolderRange.setValue(revSheetFolderId);
         rwFolderRange.setValue(revSheetFolderId);
+      }
+      else if (isRevFolderDistinct == ui.Button.CANCEL) {
+        return;
       }
     };
   }
@@ -507,7 +527,5 @@ function onOpen() {
     .addItem('New SAT student', 'NewSatFolder')
     .addItem('New ACT student', 'NewActFolder')
     .addItem('New Test prep student', 'NewTestPrepFolder')
-    .addItem('New RW Rev sheet', 'createRwRevSheet')
-    .addItem('New Math Rev sheet', 'createMathRevSheet')
     .addToUi();
 }
