@@ -240,8 +240,7 @@ function linkSheets(folderId, nameOnReport=false) {
               s.getRange('D5').setValue('for ' + nameOnReport)
             }
           }
-          ss.getSheetByName('RW Rev sheets').getRange('A2').setValue(nameOnReport);
-          ss.getSheetByName('Math Rev sheets').getRange('A2').setValue(nameOnReport);
+          ss.getSheetByName('Rev sheets backend').getRange('K2').setValue(nameOnReport);
         }
       }
     }
