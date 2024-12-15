@@ -6,10 +6,12 @@ function NewSatFolder(nameOnReport=true) {
   var parentFolderId = sourceFolder.getParents().next().getId();
 
   var ui = SpreadsheetApp.getUi();
-  var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
-
-  if(studentName == ui.Button.CANCEL) {
+  var prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
+  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
+  }
+  else {
+    var studentName = prompt.getResponseText();
   }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
@@ -37,10 +39,13 @@ function NewActFolder(nameOnReport=true) {
   var parentFolderId = sourceFolder.getParents().next().getId();
 
   var ui = SpreadsheetApp.getUi();
-  var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
+  var prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
 
-  if(studentName == ui.Button.CANCEL) {
+  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
+  }
+  else {
+    var studentName = prompt.getResponseText();
   }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
@@ -68,10 +73,13 @@ function NewTestPrepFolder(nameOnReport=true) {
   var parentFolderId = sourceFolder.getParents().next().getId();
 
   var ui = SpreadsheetApp.getUi();
-  var studentName = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL).getResponseText();
+  var prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
 
-  if(studentName == ui.Button.CANCEL) {
+  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
+  }
+  else {
+    var studentName = prompt.getResponseText();
   }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
@@ -327,11 +335,14 @@ function createRevSheet(sub, subIndex) {
   
   if (revSheetFolderId === '') {
     var ui = SpreadsheetApp.getUi();
-    var folderUrl = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)', ui.ButtonSet.OK_CANCEL).getResponseText();
+    var prompt = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)', ui.ButtonSet.OK_CANCEL);
 
-    if(folderUrl == ui.Button.CANCEL) {
+    if(prompt.getSelectedButton() == ui.Button.CANCEL) {
       return;
-    };
+    }
+    else {
+      var folderUrl = prompt.getResponseText();
+    }
 
     if (folderUrl === '') {
       var parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
