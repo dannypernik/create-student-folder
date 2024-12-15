@@ -46,12 +46,9 @@ function NewActFolder(nameOnReport=true) {
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
 
-  Logger.log('nameOnReport: ' + nameOnReport);
   if (nameOnReport) {
     nameOnReport = studentName;
   }
-  Logger.log('nameOnReport: ' + nameOnReport);
-
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'act');
   linkSheets(newFolderId, nameOnReport);
@@ -79,12 +76,10 @@ function NewTestPrepFolder(nameOnReport=true) {
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
-  Logger.log('nameOnReport: ' + nameOnReport);
 
   if (nameOnReport) {
     nameOnReport = studentName;
   }
-  Logger.log('nameOnReport: ' + nameOnReport);
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'all');
   linkSheets(newFolderId, nameOnReport);
@@ -100,6 +95,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
 
   var sourceFolder = DriveApp.getFolderById(sourceFolderId);
   const newFolder = DriveApp.getFolderById(newFolderId);
+  const newFolderName = newFolder.getName();
 
   var sourceSubFolders = sourceFolder.getFolders();
   var files = sourceFolder.getFiles();
@@ -150,12 +146,12 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       newFile.setTrashed(true);
     }
 
-    if (newFolder.getName().includes(folderType.toUpperCase()) && !newFolder.getName().includes(studentName)) {
+    if (newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
       newFile.moveTo(newFolder.getParents().next());
-      Logger.log("new location: " + newFile.getParents().next().getId());
+      Logger.log("new location for " + newFileName + ": " + newFile.getParents().next().getId());
       if (isEmptyFolder(newFolder.getId())) {
         newFolder.setTrashed(true);
-        Logger.log(newFolder.getName() + " trashed")
+        Logger.log(newFolderName + " trashed")
       }
     }
   }
@@ -163,26 +159,27 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
   while (sourceSubFolders.hasNext()) {
     var sourceSubFolder = sourceSubFolders.next();
     var folderName = sourceSubFolder.getName();
-    Logger.log(folderName + ' ' + newFolder);
 
     if (folderName === 'Student') {
       var targetFolder = newFolder.createFolder(studentName + " " + testType + " prep");
     }
-    else if (newFolder.getName().includes(folderType.toUpperCase()) && newFolder.getName() !== studentName + " " + testType + " prep") {
+    else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + " " + testType + " prep") {
       var targetFolder = newFolder.getParents().next().createFolder(folderName);
-      Logger.log(sourceSubFolder.getId() + " moved");
+      Logger.log(sourceSubFolder.getName() + " moved");
     }
     else {
       var targetFolder = newFolder.createFolder(folderName);
     }
 
-    if (targetFolder.getName().includes('ACT') && folderType.toLowerCase() === 'sat') {
+    targetFolderName = targetFolder.getName();
+
+    if (targetFolderName.includes('ACT') && folderType.toLowerCase() === 'sat') {
       targetFolder.setTrashed(true);
-      Logger.log(targetFolder.getName() + " trashed");
+      Logger.log(targetFolderName + " trashed");
     }
-    else if (targetFolder.getName().includes('SAT') && folderType.toLowerCase() === 'act') {
+    else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
       targetFolder.setTrashed(true);
-      Logger.log(targetFolder.getName() + " trashed");
+      Logger.log(targetFolderName + " trashed");
     }
     else {
       copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType);
@@ -263,8 +260,8 @@ function linkSheets(folderId, nameOnReport=false) {
   }
 
   if (satSheetIds.student && satSheetIds.admin) {
-    Logger.log(satSheetIds.student);
-    Logger.log(satSheetIds.admin);
+    Logger.log('satSheetIds.student: ' + satSheetIds.student);
+    Logger.log('satSheetIds.admin' + satSheetIds.admin);
     SpreadsheetApp.openById(satSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
     SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
     // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
@@ -383,7 +380,7 @@ function createRevSheet(sub, subIndex) {
       
       var rowHeight = calculateRowHeight(questionId, imgContainerWidth, sub)
       revSheet.setRowHeight(row, rowHeight);
-      Logger.log(questionId + ': ' + rowHeight);
+      Logger.log(questionId + ' rowHeight: ' + rowHeight);
       row++;
     }
   }
@@ -403,7 +400,7 @@ function createRevSheet(sub, subIndex) {
   }
   else {
     var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 2 + subIndex * 5).getValue().toString();
-    Logger.log(revSheetLastQuestion);
+    Logger.log('revSheetLastQuestion' + revSheetLastQuestion);
     var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
   }
   revSheet.getRange('E1').setValue(newRevSheetNumber);
