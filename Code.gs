@@ -383,7 +383,7 @@ function createRevSheet(sub, subIndex) {
       
       var rowHeight = calculateRowHeight(questionId, imgContainerWidth, sub)
       revSheet.setRowHeight(row, rowHeight);
-
+      Logger.log(questionId + ': ' + rowHeight);
       row++;
     }
   }
@@ -441,7 +441,13 @@ function createRevSheet(sub, subIndex) {
   var dataToCopy = revSheet.getRange(6,1,row-5,2).getValues();
   revData.getRange(firstEmptyRow, 2 + subIndex * 5, row-5, 2).setValues(dataToCopy);
 
-  revSheet.showRows(1,revSheet.getMaxRows());    
+  revSheet.showRows(1,revSheet.getMaxRows());
+
+  var htmlOutput = HtmlService
+    .createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSheetFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
+    .setWidth(250) //optional
+    .setHeight(50); //optional
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
 }
 
 
@@ -450,7 +456,7 @@ function calculateRowHeight(questionId, containerWidth, subject) {
   var urlOptions = {muteHttpExceptions: true};
   
   // Add exponential backoff retry logic
-  var maxRetries = 3;
+  var maxRetries = 4;
   var retryCount = 0;
   var questionImg;
 
@@ -464,8 +470,8 @@ function calculateRowHeight(questionId, containerWidth, subject) {
         SpreadsheetApp.getUi().alert('Failed to fetch image after ' + maxRetries + ' attempts: ' + e.message);
         return;
       }
-      // Exponential backoff: wait 2^retryCount * 2000 milliseconds
-      Utilities.sleep(Math.pow(2, retryCount) * 2000);
+      // Exponential backoff: wait 2^retryCount * 1000 milliseconds
+      Utilities.sleep(Math.pow(2, retryCount) * 1000);
     }
   }
 
