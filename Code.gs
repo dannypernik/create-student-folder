@@ -239,8 +239,14 @@ function linkSheets(folderId, nameOnReport=false) {
             if (s.getName().toLowerCase().includes('analysis') || s.getName().toLowerCase().includes('opportunity')) {
               s.getRange('D5').setValue('for ' + nameOnReport)
             }
+            else {
+              var protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+              for(var p=0; p< protections.length; p++) {
+                protections[p].remove();
+              }
+            }
           }
-          ss.getSheetByName('Rev sheets backend').getRange('K2').setValue(nameOnReport);
+          ss.getSheetByName('Rev sheet backend').getRange('K2').setValue(nameOnReport);
         }
       }
     }
