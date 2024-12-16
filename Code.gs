@@ -100,7 +100,6 @@ function NewTestPrepFolder(nameOnReport=true) {
 }
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat') {
-
   var sourceFolder = DriveApp.getFolderById(sourceFolderId);
   const newFolder = DriveApp.getFolderById(newFolderId);
   const newFolderName = newFolder.getName();
@@ -373,6 +372,7 @@ function createRevSheet(sub, subIndex) {
     };
   }
 
+  revSheet.showSheet();
   revSheet.showRows(1,revSheet.getMaxRows());
   revBackend.getRange(2, 2 + subBackendOffset, revBackend.getLastRow() - 1).clear();
   revBackend.getRange(2, 2 + subBackendOffset).setValue('=RANDARRAY(counta(A$2:A))');
@@ -381,15 +381,16 @@ function createRevSheet(sub, subIndex) {
 
   var idCol = revSheet.getRange('B1:B');
   var values = idCol.getValues(); // get all data in one call
-  var imgContainerWidth = revSheet.getColumnWidth(4);
+  var heights = revSheet.getRange('E1:E');
+  var heightVals = heights.getValues();
+  //var imgContainerWidth = revSheet.getColumnWidth(4);
   var row = 6;
 
   try {
     while ( values[row-1] && values[row-1][0] != "" ) {
       // get image dimensions
-      var questionId = values[row-1][0];
-      
-      var rowHeight = calculateRowHeight(questionId, imgContainerWidth, sub)
+      var questionId = values[row-1][0];  
+      var rowHeight = heightVals[row-1][0]; // rowHeights hard-coded in Rev sheet backend
       revSheet.setRowHeight(row, rowHeight);
       Logger.log(questionId + ' rowHeight: ' + rowHeight);
       row++;
@@ -450,6 +451,7 @@ function createRevSheet(sub, subIndex) {
   revData.getRange(firstEmptyRow, 2 + subIndex * 5, row-5, 2).setValues(dataToCopy);
 
   revSheet.showRows(1,revSheet.getMaxRows());
+  revSheet.hideSheet();
 
   var htmlOutput = HtmlService
     .createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSheetFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
@@ -457,6 +459,7 @@ function createRevSheet(sub, subIndex) {
     .setHeight(50); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
 }
+
 
 function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
   var sheetId = sheet.getSheetId();
