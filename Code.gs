@@ -333,43 +333,41 @@ function createRevSheet(sub, subIndex) {
   }
   
   if (revSheetFolderId === '') {
-    var ui = SpreadsheetApp.getUi();
-    var prompt = ui.prompt('Paste Drive folder URL where you want a Rev sheets folder to be created for this student (leave blank to use the same location as this spreadsheet)', ui.ButtonSet.OK_CANCEL);
+    var adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+    var subfolders = adminFolder.getFolders();
 
-    if(prompt.getSelectedButton() == ui.Button.CANCEL) {
-      return;
+    if(sub === 'RW') {
+      var subject = 'Reading & Writing'
     }
     else {
-      var folderUrl = prompt.getResponseText();
+      var subject = 'Math'
     }
 
-    if (folderUrl === '') {
-      var parentFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+    if (subfolders.hasNext()) {
+      var revSheetParentFolder = subfolders.next();
+      var nextSubfolders = revSheetParentFolder.getFolders();
+      var revSheetFolder = null;
+
+      while (nextSubfolders.hasNext()) {
+        var nextSubfolder = nextSubfolders.next();
+        if (nextSubfolder.getName().toLowerCase().includes('rev')) {
+          var revSheetFolder = nextSubfolder;
+        }
+      }
+
+      if (revSheetFolder) {
+        var revSheetSubjectFolderId = revSheetFolder.createFolder(subject);
+      }
+      else {
+        var revSheetSubjectFolderId = revSheetParentFolder.createFolder('Rev sheets').createFolder(subject).getId();
+      }
+
     }
     else {
-      var parentFolderId = folderUrl.replace(/^.+\//, '');
-      var parentFolder = DriveApp.getFolderById(parentFolderId);
+      var revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
     }
 
-    if (rwFolderRange.getValue() === '' && mathFolderRange.getValue() === '') {
-      isRevFolderDistinct = ui.alert('Do you want to have separate folders for this student\'s RW and Math Rev sheets?', ui.ButtonSet.YES_NO_CANCEL);
-      if (isRevFolderDistinct == ui.Button.YES) {
-        revSheetFolderId = parentFolder.createFolder(sub + ' Rev sheets').getId();
-        folderIdRange.setValue(revSheetFolderId);
-      }
-      else if (isRevFolderDistinct == ui.Button.NO) {
-        revSheetFolderId = parentFolder.createFolder('Rev sheets').getId();
-        mathFolderRange.setValue(revSheetFolderId);
-        rwFolderRange.setValue(revSheetFolderId);
-      }
-      else if (isRevFolderDistinct == ui.Button.CANCEL) {
-        return;
-      }
-    }
-    else {
-      revSheetFolderId = parentFolder.createFolder(sub + ' Rev sheets').getId();
-      folderIdRange.setValue(revSheetFolderId);
-    };
+    folderIdRange.setValue(revSheetSubjectFolderId);
   }
 
   var maxQuestionRange = revBackend.getRange('L2');
