@@ -373,11 +373,12 @@ function createRevSheet(sub, subIndex) {
   }
 
   var maxQuestionRange = revBackend.getRange('L2');
+  var ui = SpreadsheetApp.getUi();
   var prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
   if(prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
-  else if (prompt.getResponseText !== '') {
+  else if (prompt.getResponseText() !== '') {
     maxQuestionRange.setValue(prompt.getResponseText());
   }
 
