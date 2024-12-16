@@ -458,47 +458,6 @@ function createRevSheet(sub, subIndex) {
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
 }
 
-
-function calculateRowHeight(questionId, containerWidth, subject) {
-  var questionUrl = 'https://www.openpathtutoring.com/static/img/concepts/sat/' + subject.toLowerCase() + '/' + encodeURIComponent(questionId) + ".jpg";
-  var urlOptions = {muteHttpExceptions: true};
-  
-  // Add exponential backoff retry logic
-  var maxRetries = 4;
-  var retryCount = 0;
-  var questionImg;
-
-  while (retryCount < maxRetries) {
-    try {
-      questionImg = UrlFetchApp.fetch(questionUrl, urlOptions);
-      break; // Success - exit retry loop
-    } catch (e) {
-      retryCount++;
-      if (retryCount === maxRetries) {
-        SpreadsheetApp.getUi().alert('Failed to fetch image after ' + maxRetries + ' attempts: ' + e.message);
-        return;
-      }
-      // Exponential backoff: wait 2^retryCount * 1000 milliseconds
-      Utilities.sleep(Math.pow(2, retryCount) * 1000);
-    }
-  }
-
-  var questionBlob = questionImg.getBlob();
-  var questionSize = ImgApp.getSize(questionBlob);
-
-  if (subject.toLowerCase() === 'rw') {
-    var whitespace = 40;
-  }
-  else {
-    var whitespace = 60;
-  }
-
-  var rowHeight = questionSize.height / questionSize.width * containerWidth + whitespace;
-
-  return rowHeight;
-}
-
-
 function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
   var sheetId = sheet.getSheetId();
   var url_base = spreadsheet.getUrl().replace(/edit$/,'');
