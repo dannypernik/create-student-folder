@@ -317,7 +317,7 @@ function createRevSheet(sub, subIndex) {
   var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   var revSheetFolderId = folderIdRange.getValue();
 
-  if (revBackend.getRange(2, 1 + subBackendOffset).getValue() === '#N/A') {
+  if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
     ui.alert('Error: No missed questions available for ' + revData.getRange(1, 3 + subIndex * 5).getValue());
     return;
@@ -372,6 +372,15 @@ function createRevSheet(sub, subIndex) {
     };
   }
 
+  var maxQuestionRange = revBackend.getRange('L2');
+  var prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
+  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
+    return;
+  }
+  else if (prompt.getResponseText !== '') {
+    maxQuestionRange.setValue(prompt.getResponseText());
+  }
+
   revSheet.showSheet();
   revSheet.showRows(1,revSheet.getMaxRows());
   revBackend.getRange(2, 2 + subBackendOffset, revBackend.getLastRow() - 1).clear();
@@ -388,7 +397,6 @@ function createRevSheet(sub, subIndex) {
 
   try {
     while ( values[row-1] && values[row-1][0] != "" ) {
-      // get image dimensions
       var questionId = values[row-1][0];  
       var rowHeight = heightVals[row-1][0]; // rowHeights hard-coded in Rev sheet backend
       revSheet.setRowHeight(row, rowHeight);
