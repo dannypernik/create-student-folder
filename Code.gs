@@ -312,35 +312,43 @@ function createRevSheet(sub, subIndex) {
   var revSheet = ss.getSheetByName(sub + ' Rev sheet');
   var revData = ss.getSheetByName('Rev sheets');
   var subBackendOffset = subIndex * 4;
-  var rwFolderRange = revBackend.getRange(2, 3);
-  var mathFolderRange = revBackend.getRange(2, 7);
   var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
-  var revSheetFolderId = folderIdRange.getValue();
+  var revSheetSubjectFolderId = folderIdRange.getValue();
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
     ui.alert('Error: No missed questions available for ' + revData.getRange(1, 3 + subIndex * 5).getValue());
     return;
   }
+  
+  var maxQuestionRange = revBackend.getRange('L2');
+  var ui = SpreadsheetApp.getUi();
+  var prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
+  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
+    return;
+  }
+  else if (prompt.getResponseText() !== '') {
+    maxQuestionRange.setValue(prompt.getResponseText());
+  }
 
   try {
-    DriveApp.getFolderById(revSheetFolderId);
+    DriveApp.getFolderById(revSheetSubjectFolderId);
   }
   catch {
-    revSheetFolderId = ''
-    folderIdRange.setValue(revSheetFolderId);
+    revSheetSubjectFolderId = ''
+    folderIdRange.setValue(revSheetSubjectFolderId);
     Logger.log('blank/invalid folder ID in ' + folderIdRange);
   }
   
-  if (revSheetFolderId === '') {
+  if (revSheetSubjectFolderId === '') {
     var adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
     var subfolders = adminFolder.getFolders();
 
     if(sub === 'RW') {
-      var subject = 'Reading & Writing'
+      var subject = 'Reading & Writing';
     }
     else {
-      var subject = 'Math'
+      var subject = 'Math';
     }
 
     if (subfolders.hasNext()) {
@@ -356,7 +364,7 @@ function createRevSheet(sub, subIndex) {
       }
 
       if (revSheetFolder) {
-        var revSheetSubjectFolderId = revSheetFolder.createFolder(subject);
+        var revSheetSubjectFolderId = revSheetFolder.createFolder(subject).getId();
       }
       else {
         var revSheetSubjectFolderId = revSheetParentFolder.createFolder('Rev sheets').createFolder(subject).getId();
@@ -370,15 +378,6 @@ function createRevSheet(sub, subIndex) {
     folderIdRange.setValue(revSheetSubjectFolderId);
   }
 
-  var maxQuestionRange = revBackend.getRange('L2');
-  var ui = SpreadsheetApp.getUi();
-  var prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
-  if(prompt.getSelectedButton() == ui.Button.CANCEL) {
-    return;
-  }
-  else if (prompt.getResponseText() !== '') {
-    maxQuestionRange.setValue(prompt.getResponseText());
-  }
 
   revSheet.showSheet();
   revSheet.showRows(1,revSheet.getMaxRows());
@@ -440,7 +439,7 @@ function createRevSheet(sub, subIndex) {
 
   //* Create worksheets
   SpreadsheetApp.flush();
-  savePdf(ss, revSheet, pdfName, revSheetFolderId);
+  savePdf(ss, revSheet, pdfName, revSheetSubjectFolderId);
   Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
   //*/
 
@@ -450,7 +449,7 @@ function createRevSheet(sub, subIndex) {
 
   //* Create answer keys
   SpreadsheetApp.flush();
-  savePdf(ss, revSheet, pdfName + '~Key', revSheetFolderId);
+  savePdf(ss, revSheet, pdfName + '~Key', revSheetSubjectFolderId);
   Logger.log(sub + ' Rev key #' + newRevSheetNumber + ' saved')
   //*/
 
@@ -461,7 +460,7 @@ function createRevSheet(sub, subIndex) {
   revSheet.hideSheet();
 
   var htmlOutput = HtmlService
-    .createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSheetFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
+    .createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSheetSubjectFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
     .setWidth(250) //optional
     .setHeight(50); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
