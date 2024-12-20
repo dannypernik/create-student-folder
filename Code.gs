@@ -269,14 +269,23 @@ function linkSheets(folderId, nameOnReport=false) {
     }
   }
 
-  if (satSheetIds.student && satSheetIds.admin) {
+  let isSet = {
+    'adminStudentRev': false
+  }
+
+  if (!isSet.adminStudentRev && satSheetIds.student && satSheetIds.admin) {
     let satAdminSheet = SpreadsheetApp.openById(satSheetIds.admin);
     let satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
     
     let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('D2').getValue();
     let revDataSheet = SpreadsheetApp.openById(revDataId);
-    revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(nameOnReport);
+
+    let studentRevDataSheet = revDataSheet.getSheetByName(nameOnReport);
+    if (!studentRevDataSheet) {
+      studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(nameOnReport);
+    }
+
 
     let adminRevSheet = satAdminSheet.getSheetByName('Rev sheets');
     adminRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!B5:C")');
@@ -287,6 +296,8 @@ function linkSheets(folderId, nameOnReport=false) {
     studentRevSheet.getRange('F5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!E5:F")');
 
     SpreadsheetApp.openById(satSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
+
+    isSet.adminStudentRev = true;
     
     // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
     // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
