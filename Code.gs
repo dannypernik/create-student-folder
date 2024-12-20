@@ -242,7 +242,7 @@ function linkSheets(folderId, nameOnReport=false) {
 
           if (s.getName().toLowerCase().includes('analysis') || s.getName().toLowerCase().includes('opportunity')) {
             if (nameOnReport) {
-              s.getRange('D5').setValue('for ' + nameOnReport)
+              s.getRange('D4').setValue('for ' + nameOnReport)
             }
           }
           else {
