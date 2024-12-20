@@ -344,6 +344,7 @@ function createRevSheet(sub, subIndex) {
   let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let revSheetSubjectFolderId = folderIdRange.getValue();
   let satFolder = null;
+  let revData = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
@@ -392,7 +393,7 @@ function createRevSheet(sub, subIndex) {
           revSheetFolder = nextSubfolder;
         }
         else if (nextSubfolder.getName().includes('SAT')) {
-          satFolder = subfolder;
+          satFolder = nextSubfolder;
         }
       }
 
