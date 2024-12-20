@@ -237,21 +237,22 @@ function linkSheets(folderId, nameOnReport=false) {
         satSheetIds.admin = file.getId();
 
         var ss = SpreadsheetApp.openById(file.getId());
-        if (nameOnReport) {
-          for (i in ss.getSheets()) {
-            var s = ss.getSheets()[i];
-            if (s.getName().toLowerCase().includes('analysis') || s.getName().toLowerCase().includes('opportunity')) {
+        for (i in ss.getSheets()) {
+          var s = ss.getSheets()[i];
+
+          if (s.getName().toLowerCase().includes('analysis') || s.getName().toLowerCase().includes('opportunity')) {
+            if (nameOnReport) {
               s.getRange('D5').setValue('for ' + nameOnReport)
             }
-            else {
-              var protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
-              for(var p=0; p< protections.length; p++) {
-                protections[p].remove();
-              }
+          }
+          else {
+            var protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+            for(var p=0; p< protections.length; p++) {
+              protections[p].setUnprotectedRanges([s.getRange('C5:C'),s.getRange('G5:G'),s.getRange('K5:K')]);
             }
           }
-          ss.getSheetByName('Rev sheet backend').getRange('K2').setValue(nameOnReport);
         }
+        ss.getSheetByName('Rev sheet backend').getRange('K2').setValue(nameOnReport);
       }
     }
 
@@ -267,10 +268,23 @@ function linkSheets(folderId, nameOnReport=false) {
   }
 
   if (satSheetIds.student && satSheetIds.admin) {
-    Logger.log('satSheetIds.student: ' + satSheetIds.student);
-    Logger.log('satSheetIds.admin' + satSheetIds.admin);
+    let satAdminSheet = SpreadsheetApp.openById(satSheetIds.admin);
+    let satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
+    satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
+    
+    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getValue('D2');
+
+    let adminRevSheet = satAdminSheet.getSheetByName('Rev sheets');
+    adminRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!B5:C")');
+    adminRevSheet.getRange('G5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!E5:F")');
+
+    let studentRevSheet = satStudentSheet.getSheetByName('Rev sheets');
+    studentRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!B5:C")');
+    studentRevSheet.getRange('F5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!E5:F")');
+
     SpreadsheetApp.openById(satSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
-    SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
+    
+    // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
     // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
     // SpreadsheetApp.openById(satSheetIds.student).getSheets()[0].getRange('D1').setValue('=importrange("' + satSheetIds.admin + '","Question bank data!V1")');
   }
@@ -310,14 +324,15 @@ function createRevSheet(sub, subIndex) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var revBackend = ss.getSheetByName('Rev sheet backend');
   var revSheet = ss.getSheetByName(sub + ' Rev sheet');
-  var revData = ss.getSheetByName('Rev sheets');
+  var revResponseSheet = ss.getSheetByName('Rev sheets')
+  var revData = SpreadsheetApp.openById(revBackend.getRange('D2')).getSheetByName(revBackend.getRange('K2'));
   var subBackendOffset = subIndex * 4;
   var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   var revSheetSubjectFolderId = folderIdRange.getValue();
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
-    ui.alert('Error: No missed questions available for ' + revData.getRange(1, 3 + subIndex * 5).getValue());
+    ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
     return;
   }
   
@@ -412,12 +427,12 @@ function createRevSheet(sub, subIndex) {
     return;
   }
   
-  var firstEmptyRow = getFirstEmptyRow(revData, 2 + subIndex * 5);
+  var firstEmptyRow = getFirstEmptyRow(revData, 2 + subIndex * 3);
   if (firstEmptyRow === 5) {
     var newRevSheetNumber = 1;
   }
   else {
-    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 2 + subIndex * 5).getValue().toString();
+    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 2 + subIndex * 3).getValue().toString();
     Logger.log('revSheetLastQuestion' + revSheetLastQuestion);
     var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
   }
@@ -454,7 +469,7 @@ function createRevSheet(sub, subIndex) {
   //*/
 
   var dataToCopy = revSheet.getRange(6,1,row-5,2).getValues();
-  revData.getRange(firstEmptyRow, 2 + subIndex * 5, row-5, 2).setValues(dataToCopy);
+  revData.getRange(firstEmptyRow, 2 + subIndex * 3, row-5, 2).setValues(dataToCopy);
 
   revSheet.showRows(1,revSheet.getMaxRows());
   revSheet.hideSheet();
