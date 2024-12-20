@@ -344,7 +344,9 @@ function createRevSheet(sub, subIndex) {
   let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let revSheetSubjectFolderId = folderIdRange.getValue();
   let satFolder = null;
-  let revData = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
+  let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
+  let studentName = revBackend.getRange('K2').getValue();
+  let revDataSheet = revDataSs.getSheetByName(studentName);
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
@@ -456,12 +458,12 @@ function createRevSheet(sub, subIndex) {
     return;
   }
   
-  var firstEmptyRow = getFirstEmptyRow(revData, 2 + subIndex * 3);
+  var firstEmptyRow = getFirstEmptyRow(revDataSheet, 2 + subIndex * 3);
   if (firstEmptyRow === 5) {
     var newRevSheetNumber = 1;
   }
   else {
-    var revSheetLastQuestion = revData.getRange(firstEmptyRow - 1, 2 + subIndex * 3).getValue().toString();
+    var revSheetLastQuestion = revDataSheet.getRange(firstEmptyRow - 1, 2 + subIndex * 3).getValue().toString();
     Logger.log('revSheetLastQuestion' + revSheetLastQuestion);
     var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
   }
@@ -497,7 +499,7 @@ function createRevSheet(sub, subIndex) {
   //*/
 
   var dataToCopy = revSheet.getRange(6,1,row-5,2).getValues();
-  revData.getRange(firstEmptyRow, 2 + subIndex * 3, row-5, 2).setValues(dataToCopy);
+  revDataSheet.getRange(firstEmptyRow, 2 + subIndex * 3, row-5, 2).setValues(dataToCopy);
 
   revSheet.showRows(1,revSheet.getMaxRows());
   revSheet.hideSheet();
