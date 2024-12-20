@@ -275,6 +275,8 @@ function linkSheets(folderId, nameOnReport=false) {
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
     
     let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('D2').getValue();
+    let revDataSheet = SpreadsheetApp.openById(revDataId);
+    revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(nameOnReport);
 
     let adminRevSheet = satAdminSheet.getSheetByName('Rev sheets');
     adminRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!B5:C")');
@@ -324,20 +326,13 @@ function createMathRevSheet() {
 
 function createRevSheet(sub, subIndex) {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let revBackend = ss.getSheetByName('Rev sheet backend');
   let revSheet = ss.getSheetByName(sub + ' Rev sheet');
   let revResponseSheet = ss.getSheetByName('Rev sheets')
   let subBackendOffset = subIndex * 4;
-  let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let revSheetSubjectFolderId = folderIdRange.getValue();
+  let revBackend = ss.getSheetByName('Rev sheet backend');
+  let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let satFolder = null;
-  let studentName = revBackend.getRange('K2');
-  let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2'));
-  let revData = revDataSs.getSheetByName(studentName);
-
-  if(!revData) {
-    revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
-  }
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
