@@ -340,9 +340,9 @@ function createRevSheet(sub, subIndex) {
   let revSheet = ss.getSheetByName(sub + ' Rev sheet');
   let revResponseSheet = ss.getSheetByName('Rev sheets')
   let subBackendOffset = subIndex * 4;
-  let revSheetSubjectFolderId = folderIdRange.getValue();
   let revBackend = ss.getSheetByName('Rev sheet backend');
   let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
+  let revSheetSubjectFolderId = folderIdRange.getValue();
   let satFolder = null;
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
