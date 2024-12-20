@@ -321,14 +321,21 @@ function createMathRevSheet() {
 }
 
 function createRevSheet(sub, subIndex) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var revBackend = ss.getSheetByName('Rev sheet backend');
-  var revSheet = ss.getSheetByName(sub + ' Rev sheet');
-  var revResponseSheet = ss.getSheetByName('Rev sheets')
-  var revData = SpreadsheetApp.openById(revBackend.getRange('D2')).getSheetByName(revBackend.getRange('K2'));
-  var subBackendOffset = subIndex * 4;
-  var folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
-  var revSheetSubjectFolderId = folderIdRange.getValue();
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let revBackend = ss.getSheetByName('Rev sheet backend');
+  let revSheet = ss.getSheetByName(sub + ' Rev sheet');
+  let revResponseSheet = ss.getSheetByName('Rev sheets')
+  let subBackendOffset = subIndex * 4;
+  let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
+  let revSheetSubjectFolderId = folderIdRange.getValue();
+  let satFolder = null;
+  let studentName = revBackend.getRange('K2');
+  let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2'));
+  let revData = revDataSs.getSheetByName(studentName);
+
+  if(!revData) {
+    revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
+  }
 
   if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
     var ui = SpreadsheetApp.getUi();
@@ -374,20 +381,33 @@ function createRevSheet(sub, subIndex) {
       while (nextSubfolders.hasNext()) {
         var nextSubfolder = nextSubfolders.next();
         if (nextSubfolder.getName().toLowerCase().includes('rev')) {
-          var revSheetFolder = nextSubfolder;
+          revSheetFolder = nextSubfolder;
+        }
+        else if (nextSubfolder.getName().includes('SAT')) {
+          satFolder = subfolder;
         }
       }
 
       if (revSheetFolder) {
-        var revSheetSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+        getRevSubjectFolderId(revSheetFolder);
+      }
+      else if (satFolder) {
+        let subfolders = satFolder.getFolders();
+        while (subfolders.hasNext()) {
+          let subfolder = subfolders.next();
+
+          if (subfolder.getName().toLowerCase().includes('rev')) {
+            revSheetFolder = subfolder;
+            getRevSubjectFolder(revSheetFolder);
+          }
+        }
       }
       else {
-        var revSheetSubjectFolderId = revSheetParentFolder.createFolder('Rev sheets').createFolder(subject).getId();
+        revSheetSubjectFolderId = revSheetParentFolder.createFolder('Rev sheets').createFolder(subject).getId();
       }
-
     }
     else {
-      var revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
+      revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
     }
 
     folderIdRange.setValue(revSheetSubjectFolderId);
@@ -444,8 +464,7 @@ function createRevSheet(sub, subIndex) {
   revSheet.hideColumns(6);
   revSheet.showColumns(5);
 
-  var studentName = revSheet.getRange('A2').getValue();
-  if (studentName === '') {
+  if (!studentName) {
     var pdfName = sub + ' Rev sheet #' + newRevSheetNumber;
   }
   else {
@@ -479,6 +498,25 @@ function createRevSheet(sub, subIndex) {
     .setWidth(250) //optional
     .setHeight(50); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
+}
+
+
+function getRevSubjectFolderId(revSheetFolder) {
+  let revSheetSubjectFolderId;
+
+  while (revSheetFolder.hasNext()) {
+    let subfolder = revSheetFolder.next();
+    let subfolderName = subfolder.getName();
+    if (subfolderName.toLowerCase().includes(subject)) {
+      revSheetSubjectFolderId = subfolder.getId();
+      break;
+    }
+  }
+  if (!revSheetSubjectFolderId) {
+    revSheetSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+  }
+
+  return revSheetSubjectFolderId;
 }
 
 
