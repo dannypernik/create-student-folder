@@ -252,7 +252,9 @@ function linkSheets(folderId, nameOnReport=false) {
             }
           }
         }
-        ss.getSheetByName('Rev sheet backend').getRange('K2').setValue(nameOnReport);
+        let revBackend = ss.getSheetByName('Rev sheet backend');
+        revBackend.getRange('K2').setValue(nameOnReport);
+        revBackend.protect().setWarningOnly(true);
       }
     }
 
