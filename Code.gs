@@ -274,7 +274,7 @@ function linkSheets(folderId, nameOnReport=false) {
     let satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
     
-    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getValue('D2');
+    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('D2').getValue();
 
     let adminRevSheet = satAdminSheet.getSheetByName('Rev sheets');
     adminRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + nameOnReport + '!B5:C")');
