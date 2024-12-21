@@ -415,7 +415,7 @@ function createRevSheet(sub, subIndex) {
         }
       }
       else {
-        revSheetSubjectFolderId = revSheetParentFolder.createFolder('Rev sheets').createFolder(subject).getId();
+        revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
       }
     }
     else {
