@@ -343,7 +343,7 @@ function createRevSheet(sub, subIndex) {
   let revBackend = ss.getSheetByName('Rev sheet backend');
   let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let revSheetSubjectFolderId = folderIdRange.getValue();
-  let satFolder = null;
+  let satFolder;
   let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
   let studentName = revBackend.getRange('K2').getValue();
   let revDataSheet = revDataSs.getSheetByName(studentName);
@@ -374,9 +374,6 @@ function createRevSheet(sub, subIndex) {
   }
   
   if (revSheetSubjectFolderId === '') {
-    var adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
-    var subfolders = adminFolder.getFolders();
-
     if(sub === 'RW') {
       var subject = 'Reading & Writing';
     }
@@ -384,33 +381,37 @@ function createRevSheet(sub, subIndex) {
       var subject = 'Math';
     }
 
+    var adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+    var subfolders = adminFolder.getFolders();
     if (subfolders.hasNext()) {
-      var revSheetParentFolder = subfolders.next();
-      var nextSubfolders = revSheetParentFolder.getFolders();
-      var revSheetFolder = null;
+      let revSheetFolder;
 
-      while (nextSubfolders.hasNext()) {
-        var nextSubfolder = nextSubfolders.next();
-        if (nextSubfolder.getName().toLowerCase().includes('rev')) {
-          revSheetFolder = nextSubfolder;
+      while (subfolders.hasNext()) {
+        let subfolder = subfolders.next();
+        if (subfolder.getName().includes('Rev')) {
+          revSheetFolder = subfolder;
         }
-        else if (nextSubfolder.getName().includes('SAT')) {
-          satFolder = nextSubfolder;
+        else if (subfolder.getName().includes('SAT')) {
+          satFolder = subfolder;
         }
       }
 
       if (revSheetFolder) {
-        getRevSubjectFolderId(revSheetFolder);
+        revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
       }
       else if (satFolder) {
         let subfolders = satFolder.getFolders();
         while (subfolders.hasNext()) {
           let subfolder = subfolders.next();
 
-          if (subfolder.getName().toLowerCase().includes('rev')) {
+          if (subfolder.getName().includes('Rev')) {
             revSheetFolder = subfolder;
-            getRevSubjectFolder(revSheetFolder);
+            revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
           }
+        }
+
+        if(!revSheetSubjectFolderId) {
+          revSheetSubjectFolderId = satFolder.createFolder('Rev sheets').createFolder(subject).getId();
         }
       }
       else {
@@ -457,6 +458,8 @@ function createRevSheet(sub, subIndex) {
     }
     return;
   }
+
+  Logger.log(revDataSheet.getSheetName());
   
   var firstEmptyRow = getFirstEmptyRow(revDataSheet, 2 + subIndex * 3);
   if (firstEmptyRow === 5) {
@@ -518,7 +521,7 @@ function getRevSubjectFolderId(revSheetFolder) {
   while (revSheetFolder.hasNext()) {
     let subfolder = revSheetFolder.next();
     let subfolderName = subfolder.getName();
-    if (subfolderName.toLowerCase().includes(subject)) {
+    if (subfolderName.toLowerCase().includes(subject.toLowerCase())) {
       revSheetSubjectFolderId = subfolder.getId();
       break;
     }
@@ -569,7 +572,7 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 
 // Adapted from https://stackoverflow.com/a/9102463/1677912
 function getFirstEmptyRow(sheet, colIndex) {
-  var column = sheet.getRange(5, colIndex, sheet.getLastRow() - 4);
+  var column = sheet.getRange(5, colIndex, sheet.getRange('A1:A').getLastRow() - 4);
   var values = column.getValues(); // get all data in one call
   var ct = 0;
   while ( values[ct] && values[ct][0] != "" ) {
