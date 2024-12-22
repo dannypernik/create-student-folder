@@ -337,7 +337,6 @@ function createMathRevSheet() {
 
 function createRevSheet(sub, subIndex) {
   try {
-
     let ss = SpreadsheetApp.getActiveSpreadsheet();
     let revSheet = ss.getSheetByName(sub + ' Rev sheet');
     let revResponseSheet = ss.getSheetByName('Rev sheets')
@@ -548,9 +547,10 @@ function createRevSheet(sub, subIndex) {
   catch(err) {
     let htmlOutput = HtmlService
       .createHtmlOutput(err)
-      .setWidth(250) //optional
-      .setHeight(50); //optional
+      .setWidth(400) //optional
+      .setHeight(100); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
+    Logger.log(err);
     return;
   }
 }
