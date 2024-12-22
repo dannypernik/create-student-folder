@@ -343,7 +343,7 @@ function createRevSheet(sub, subIndex) {
   let revBackend = ss.getSheetByName('Rev sheet backend');
   let folderIdRange = revBackend.getRange(2, 3 + subBackendOffset);
   let revSheetSubjectFolderId = folderIdRange.getValue();
-  let satFolder;
+  let satFolder, studentFolder;
   let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
   let studentName = revBackend.getRange('K2').getValue();
   let revDataSheet = revDataSs.getSheetByName(studentName);
@@ -382,17 +382,21 @@ function createRevSheet(sub, subIndex) {
     }
 
     var adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
-    var subfolders = adminFolder.getFolders();
-    if (subfolders.hasNext()) {
+    var adminSubfolders = adminFolder.getFolders();
+    if (adminSubfolders.hasNext()) {
       let revSheetFolder;
 
-      while (subfolders.hasNext()) {
-        let subfolder = subfolders.next();
-        if (subfolder.getName().includes('Rev')) {
-          revSheetFolder = subfolder;
+      while (adminSubfolders.hasNext()) {
+        let adminSubfolder = adminSubfolders.next();
+        let adminSubfolderName = adminSubfolder.getName();
+        if (adminSubfolderName.includes('Rev')) {
+          revSheetFolder = adminSubfolder;
         }
-        else if (subfolder.getName().includes('SAT')) {
-          satFolder = subfolder;
+        else if (adminSubfolderName.includes('SAT')) {
+          satFolder = adminSubfolder;
+        }
+        else if (adminSubfolderName.toLowerCase().includes(subject.toLowerCase())) {
+          studentFolder = adminSubfolder;
         }
       }
 
@@ -414,7 +418,33 @@ function createRevSheet(sub, subIndex) {
           revSheetSubjectFolderId = satFolder.createFolder('Rev sheets').createFolder(subject).getId();
         }
       }
-      else {
+      else if (studentFolder) {
+        let subfolders = studentFolder.getFolders();
+        while (subfolders.hasNext()) {
+          let subfolder = subfolders.next();
+          let subfolderName = subfolder.getName();
+
+          if (subfolder.getName().includes('Rev')) {
+            revSheetFolder = subfolder;
+            revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
+          }
+          else if (subfolderName.includes('SAT')) {
+            let satSubfolders = subfolder.getFolders();
+            while (satSubfolders.hasNext()) {
+              let satSubfolder = satSubfolders.next();
+              let satSubfolderName = satSubfolder.getName()
+
+              if (satSubfolderName.includes('Rev')) {
+                revSheetFolder = subfolder;
+                revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
+              }
+            }
+
+            if(!revSheetSubjectFolderId) {
+              revSheetSubjectFolderId = satFolder.createFolder('Rev sheets').createFolder(subject).getId();
+            }
+          }
+        }
         revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
       }
     }
