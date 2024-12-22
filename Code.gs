@@ -446,7 +446,9 @@ function createRevSheet(sub, subIndex) {
               }
             }
           }
-          revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
+          if(!revSheetSubjectFolderId) {
+            revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
+          }
         }
       }
       else {
@@ -546,11 +548,11 @@ function createRevSheet(sub, subIndex) {
   }
   catch(err) {
     let htmlOutput = HtmlService
-      .createHtmlOutput(err)
+      .createHtmlOutput(err.stack)
       .setWidth(400) //optional
-      .setHeight(100); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
-    Logger.log(err);
+    Logger.log(err.stack);
+    throw Error 
     return;
   }
 }
