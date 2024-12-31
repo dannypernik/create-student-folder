@@ -575,6 +575,23 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
   folder.createFile(blob);
 }
 
+function transferOldStudentData() {
+  let ui = SpreadsheetApp.getUi();
+  let prompt = ui.prompt('Old admin analysis URL:', ui.ButtonSet.OK_CANCEL);
+  let oldAdminDataUrl = prompt.getResponseText();
+  if (prompt.getSelectedButton() == ui.Button.CANCEL) {
+    return;
+  }
+
+  let oldSsId;
+  if (oldAdminDataUrl.includes('/d/')) {
+    oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
+  } else {
+    oldSsId = oldAdminDataUrl;
+  }
+  transferStudentData(oldSsId);
+}
+
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   let oldSs = SpreadsheetApp.openById(oldSsId);
   let newSs = SpreadsheetApp.openById(newSsId);
@@ -656,5 +673,10 @@ function getFirstEmptyRow(sheet, colIndex) {
 
 function onOpen() {
   let ui = SpreadsheetApp.getUi();
-  ui.createMenu('Scripts').addItem('New SAT student', 'NewSatFolder').addItem('New ACT student', 'NewActFolder').addItem('New Test prep student', 'NewTestPrepFolder').addToUi();
+  ui.createMenu('Scripts')
+    .addItem('New SAT student', 'NewSatFolder')
+    .addItem('New ACT student', 'NewActFolder')
+    .addItem('New Test prep student', 'NewTestPrepFolder')
+    .addItem('Transfer student data', 'transferOldStudentData')
+    .addToUi();
 }
