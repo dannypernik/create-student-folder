@@ -673,10 +673,17 @@ function getFirstEmptyRow(sheet, colIndex) {
 
 function onOpen() {
   let ui = SpreadsheetApp.getUi();
-  ui.createMenu('Scripts')
-    .addItem('New SAT student', 'NewSatFolder')
-    .addItem('New ACT student', 'NewActFolder')
-    .addItem('New Test prep student', 'NewTestPrepFolder')
-    .addItem('Transfer student data', 'transferOldStudentData')
-    .addToUi();
+
+  if (SpreadsheetApp.getActiveSpreadsheet().getName().toLowerCase().includes('template')) {
+    ui.createMenu('Scripts')
+      .addItem('New SAT student', 'NewSatFolder')
+      .addItem('New ACT student', 'NewActFolder')
+      .addItem('New Test prep student', 'NewTestPrepFolder')
+      .addToUi();
+  }
+  else {
+    ui.createMenu('Scripts')
+      .addItem('Transfer student data', 'transferOldStudentData')
+      .addToUi();
+  }
 }
