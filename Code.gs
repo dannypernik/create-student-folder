@@ -595,8 +595,8 @@ function transferOldStudentData() {
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   let oldSs = SpreadsheetApp.openById(oldSsId);
   let newSs = SpreadsheetApp.openById(newSsId);
-  let testCodes = getTestCodes(oldSs);
-  let answerSheets = testCodes.push(['Reading & Writing', 'Math', 'SLT Uniques']);
+  let answerSheets = getTestCodes(oldSs);
+  answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
   for (let s in answerSheets) {
     let sheet = answerSheets[s];
