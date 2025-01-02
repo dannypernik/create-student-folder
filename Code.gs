@@ -614,8 +614,8 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
       let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
       let newOffset = 0;
 
-      for (let r = 0; r < oldAnswersLevel1.length; r++) {
-        if (oldAnswersLevel1[0][0] === newAnswersLevel1[r][0]) {
+      for (let r = 0; r < newAnswersLevel1.getLastRow(); r++) {
+        if (oldAnswersLevel1.getValues()[0][0] === newAnswersLevel1.getValues()[r][0]) {
           break;
         }
         newOffset++;
