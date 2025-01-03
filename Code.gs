@@ -621,11 +621,23 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
   DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 
   let answerSheets = getTestCodes(oldSs);
-  answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
+  let testScores = [];
 
   for (let s in answerSheets) {
     let sheet = answerSheets[s];
-    let newSheet = newSs.getSheetByName(sheet);
+    let sheetName = sheet.getName();
+    let subScore = sheet.getRange('G1:I1').getValues();
+    testScores.push({
+      'test': sheetName,
+      'scores': subScore
+    })
+  }
+
+  answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
+
+  for (let s in answerSheets) {
+    let sheetName = answerSheets[s];
+    let newSheet = newSs.getSheetByName(sheetName);
 
     if (newSheet) {
       Logger.log('Transferring answers for ' + newSheet.getName());
@@ -647,6 +659,7 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
         }
         Logger.log('newSheetFormulas: ' + newSheetFormulas);
         newRanges[i].setValues(newSheetFormulas);
+        newSheet.getRange('G1:I1').setValues(testScores[sheetName])
       }
     }
   }
