@@ -585,7 +585,7 @@ function transferOldStudentData() {
   let oldSsId;
   if (oldAdminDataUrl.includes('/d/')) {
     oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
-  }
+  } 
   else {
     oldSsId = oldAdminDataUrl;
   }
@@ -601,7 +601,7 @@ function transferOldStudentData() {
   }
   else if (newAdminDataUrl.includes('/d/')) {
     newSsId = newAdminDataUrl.split('/d/')[1].split('/')[0];
-  }
+  } 
   else {
     newSsId = newAdminDataUrl;
   }
@@ -612,7 +612,6 @@ function transferOldStudentData() {
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   let oldSs = SpreadsheetApp.openById(oldSsId);
   let newSs = SpreadsheetApp.openById(newSsId);
-  let oldStudentData = oldSs.getSheetByName('Student responses');
   let newStudentData = newSs.getSheetByName('Student responses');
 
   // temporarily set old admin data imports
