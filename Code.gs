@@ -582,14 +582,31 @@ function transferOldStudentData() {
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
-
   let oldSsId;
   if (oldAdminDataUrl.includes('/d/')) {
     oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
-  } else {
+  } 
+  else {
     oldSsId = oldAdminDataUrl;
   }
-  transferStudentData(oldSsId);
+
+  prompt = ui.prompt('New admin analysis spreadsheet URL or ID - leave blank to use current spreadsheet:', ui.ButtonSet.OK_CANCEL);
+  let newAdminDataUrl = prompt.getResponseText();
+  if (prompt.getSelectedButton() == ui.Button.CANCEL) {
+    return;
+  }
+  let  = newSsId;
+  if (newAdminDataUrl === '') {
+    newSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  }
+  else if (newAdminDataUrl.includes('/d/')) {
+    newSsId = newAdminDataUrl.split('/d/')[1].split('/')[0];
+  } 
+  else {
+    newSsId = newAdminDataUrl;
+  }
+
+  transferStudentData(oldSsId, newSsId);
 }
 
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
@@ -598,57 +615,47 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
   let oldStudentData = oldSs.getSheetByName('Student responses');
   let newStudentData = newSs.getSheetByName('Student responses');
 
-  let studentSsId = newStudentData.getRange('B1').getValue();
-
-  // temporarily set old admin data to student SsId
-  newStudentData.getRange('B1').setValue(oldSsId);
+  // temporarily set old admin data imports
+  let initialImportFunction = newStudentData.getRange('A3').getFormula();
+  newStudentData.getRange('A3').setValue('=importrange("' + oldSsId + '", "Question bank data!$A$1:$G10000")');
+  newStudentData.getRange('H3').setValue('=importrange("' + oldSsId + '", "Question bank data!$I$1:$I10000")');
+  DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 
   let answerSheets = getTestCodes(oldSs);
   answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
   for (let s in answerSheets) {
     let sheet = answerSheets[s];
-    // let oldSheet = oldSs.getSheetByName(sheet);
     let newSheet = newSs.getSheetByName(sheet);
 
     if (newSheet) {
-      // let oldAnswersLevel1 = oldSheet.getRange('B5:C');
-      // let oldAnswersLevel2 = oldSheet.getRange('F5:G');
-      // let oldAnswersLevel3 = oldSheet.getRange('J5:K');
-      let newAnswersLevel1 = newSheet.getRange('B5:C');
-      let newAnswersLevel2 = newSheet.getRange('F5:G');
-      let newAnswersLevel3 = newSheet.getRange('J5:K');
-      // let oldRanges = [oldAnswersLevel1, oldAnswersLevel2, oldAnswersLevel3];
+      Logger.log('Transferring answers for ' + newSheet.getName());
+      let newAnswersLevel1 = newSheet.getRange('C5:C');
+      let newAnswersLevel2 = newSheet.getRange('G5:G');
+      let newAnswersLevel3 = newSheet.getRange('K5:K');
       let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
-      // let newOffset = 0;
-
-      // for (let r = 0; r < newAnswersLevel1.getLastRow(); r++) {
-      //   if (oldAnswersLevel1.getValues()[0][0] === newAnswersLevel1.getValues()[r][0]) {
-      //     break;
-      //   }
-      //   newOffset++;
-      // }
 
       for (let i = 0; i < newRanges.length; i++) {
-        // let oldTestData = oldRanges[i].getValues();
         let newSheetFormulas = newRanges[i].getFormulas();
         let newSheetValues = newRanges[i].getValues();
 
         if (newSheetFormulas) {
           for (let row = 0; row < newSheetFormulas.length; row++) {
-            for (let col = 0; col < newSheetFormulas[row].length; col++) {
-              if (newSheetValues[row][col] !== '') {
-                Logger.log('row: ' + row + ', col: ' + col + ', value: ' + newSheetValues[row][col]);
-                newSheetFormulas[row][col] = newSheetValues[row][col];
-              }
+            if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
+              newSheetFormulas[row][0] = newSheetValues[row][0];
             }
           }
         }
         Logger.log('newSheetFormulas: ' + newSheetFormulas);
-        // newRanges[i].setValues(newSheetFormulas);
+        newRanges[i].setValues(newSheetFormulas);
       }
     }
   }
+
+  // revert student ID and SS permissions
+  newStudentData.getRange('A3').setValue(initialImportFunction);
+  newStudentData.getRange('H3').setValue('');
+  DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 }
 
 function getLastFilledRow(sheet, col) {
