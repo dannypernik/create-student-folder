@@ -2,3 +2,7 @@
 appsscript.js
 appsscript.json
 .prettierignore
+/node_modules/
+jsconfig.json
+package-lock.json
+package.json
