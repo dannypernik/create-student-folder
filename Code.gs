@@ -585,7 +585,7 @@ function transferOldStudentData() {
   let oldSsId;
   if (oldAdminDataUrl.includes('/d/')) {
     oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
-  } 
+  }
   else {
     oldSsId = oldAdminDataUrl;
   }
@@ -601,7 +601,7 @@ function transferOldStudentData() {
   }
   else if (newAdminDataUrl.includes('/d/')) {
     newSsId = newAdminDataUrl.split('/d/')[1].split('/')[0];
-  } 
+  }
   else {
     newSsId = newAdminDataUrl;
   }
