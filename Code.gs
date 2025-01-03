@@ -659,7 +659,10 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
         }
         Logger.log('newSheetFormulas: ' + newSheetFormulas);
         newRanges[i].setValues(newSheetFormulas);
-        newSheet.getRange('G1:I1').setValues(testScores[sheetName])
+        let testScore = testScores.find(score => score.test === sheetName);
+        if (testScore) {
+          newSheet.getRange('G1:I1').setValues(testScore.scores);
+        }
       }
     }
   }
