@@ -577,7 +577,7 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 
 function transferOldStudentData() {
   let ui = SpreadsheetApp.getUi();
-  let prompt = ui.prompt('Old admin analysis URL:', ui.ButtonSet.OK_CANCEL);
+  let prompt = ui.prompt('Old admin analysis spreadsheet URL or ID:', ui.ButtonSet.OK_CANCEL);
   let oldAdminDataUrl = prompt.getResponseText();
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
@@ -595,46 +595,57 @@ function transferOldStudentData() {
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   let oldSs = SpreadsheetApp.openById(oldSsId);
   let newSs = SpreadsheetApp.openById(newSsId);
+  let oldStudentData = oldSs.getSheetByName('Student responses');
+  let newStudentData = newSs.getSheetByName('Student responses');
+
+  let studentSsId = newStudentData.getRange('B1').getValue();
+
+  // temporarily set old admin data to student SsId
+  newStudentData.getRange('B1').setValue(oldSsId);
+
   let answerSheets = getTestCodes(oldSs);
   answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
   for (let s in answerSheets) {
     let sheet = answerSheets[s];
-    let oldSheet = oldSs.getSheetByName(sheet);
+    // let oldSheet = oldSs.getSheetByName(sheet);
     let newSheet = newSs.getSheetByName(sheet);
 
-    if (oldSheet && newSheet) {
-      let oldAnswersLevel1 = oldSheet.getRange('B5:C');
-      let oldAnswersLevel2 = oldSheet.getRange('F5:G');
-      let oldAnswersLevel3 = oldSheet.getRange('J5:K');
+    if (newSheet) {
+      // let oldAnswersLevel1 = oldSheet.getRange('B5:C');
+      // let oldAnswersLevel2 = oldSheet.getRange('F5:G');
+      // let oldAnswersLevel3 = oldSheet.getRange('J5:K');
       let newAnswersLevel1 = newSheet.getRange('B5:C');
       let newAnswersLevel2 = newSheet.getRange('F5:G');
       let newAnswersLevel3 = newSheet.getRange('J5:K');
-      let oldRanges = [oldAnswersLevel1, oldAnswersLevel2, oldAnswersLevel3];
+      // let oldRanges = [oldAnswersLevel1, oldAnswersLevel2, oldAnswersLevel3];
       let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
-      let newOffset = 0;
+      // let newOffset = 0;
 
-      for (let r = 0; r < newAnswersLevel1.getLastRow(); r++) {
-        if (oldAnswersLevel1.getValues()[0][0] === newAnswersLevel1.getValues()[r][0]) {
-          break;
-        }
-        newOffset++;
-      }
+      // for (let r = 0; r < newAnswersLevel1.getLastRow(); r++) {
+      //   if (oldAnswersLevel1.getValues()[0][0] === newAnswersLevel1.getValues()[r][0]) {
+      //     break;
+      //   }
+      //   newOffset++;
+      // }
 
-      for (let i = 0; i < oldRanges.length; i++) {
-        let oldTestData = oldRanges[i].getValues();
-        let newTestData = newRanges[i].getValues();
+      for (let i = 0; i < newRanges.length; i++) {
+        // let oldTestData = oldRanges[i].getValues();
+        let newSheetFormulas = newRanges[i].getFormulas();
+        let newSheetValues = newRanges[i].getValues();
 
-        if (oldTestData) {
-          for (let row = 0; row < oldTestData.length; row++) {
-            for (let col = 0; col < oldTestData[row].length; col++) {
-              if (oldTestData[row][col] !== '' && oldTestData[row][col] !== newTestData[row + newOffset][col]) {
-                newTestData[row + newOffset][col] = oldTestData[row][col];
+        if (newSheetFormulas) {
+          for (let row = 0; row < newSheetFormulas.length; row++) {
+            for (let col = 0; col < newSheetFormulas[row].length; col++) {
+              if (newSheetValues[row][col] !== '') {
+                Logger.log('row: ' + row + ', col: ' + col + ', value: ' + newSheetValues[row][col]);
+                newSheetFormulas[row][col] = newSheetValues[row][col];
               }
             }
           }
         }
-        newRanges[i].setValues(newTestData);
+        Logger.log('newSheetFormulas: ' + newSheetFormulas);
+        // newRanges[i].setValues(newSheetFormulas);
       }
     }
   }
