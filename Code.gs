@@ -624,9 +624,9 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
   let testScores = [];
 
   for (let s in answerSheets) {
-    let sheet = answerSheets[s];
-    let sheetName = sheet.getName();
-    let subScore = sheet.getRange('G1:I1').getValues();
+    let sheetName = answerSheets[s];
+    let oldSheet = oldSs.getSheetByName(sheet);
+    let subScore = oldSheet.getRange('G1:I1').getValues();
     testScores.push({
       'test': sheetName,
       'scores': subScore
