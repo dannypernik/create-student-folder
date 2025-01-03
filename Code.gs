@@ -595,7 +595,7 @@ function transferOldStudentData() {
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
-  let  = newSsId;
+  let newSsId;
   if (newAdminDataUrl === '') {
     newSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
