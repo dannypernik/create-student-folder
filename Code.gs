@@ -582,14 +582,31 @@ function transferOldStudentData() {
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
-
   let oldSsId;
   if (oldAdminDataUrl.includes('/d/')) {
     oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
-  } else {
+  } 
+  else {
     oldSsId = oldAdminDataUrl;
   }
-  transferStudentData(oldSsId);
+
+  prompt = ui.prompt('New admin analysis spreadsheet URL or ID - leave blank to use current spreadsheet:', ui.ButtonSet.OK_CANCEL);
+  let newAdminDataUrl = prompt.getResponseText();
+  if (prompt.getSelectedButton() == ui.Button.CANCEL) {
+    return;
+  }
+  let  = newSsId;
+  if (newAdminDataUrl === '') {
+    newSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  }
+  else if (newAdminDataUrl.includes('/d/')) {
+    newSsId = newAdminDataUrl.split('/d/')[1].split('/')[0];
+  } 
+  else {
+    newSsId = newAdminDataUrl;
+  }
+
+  transferStudentData(oldSsId, newSsId);
 }
 
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
