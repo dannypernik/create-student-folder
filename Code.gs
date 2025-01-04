@@ -620,61 +620,89 @@ function transferOldStudentData() {
 }
 
 function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
-  let oldSs = SpreadsheetApp.openById(oldSsId);
-  let newSs = SpreadsheetApp.openById(newSsId);
-  let newStudentData = newSs.getSheetByName('Student responses');
+  let oldSs, newSs, newStudentData, initialImportFunction;
+  try {
+    oldSs = SpreadsheetApp.openById(oldSsId);
+    newSs = SpreadsheetApp.openById(newSsId);
+    newStudentData = newSs.getSheetByName('Student responses');
 
-  // temporarily set old admin data imports
-  let initialImportFunction = newStudentData.getRange('A3').getFormula();
-  newStudentData.getRange('A3').setValue('=importrange("' + oldSsId + '", "Question bank data!$A$1:$G10000")');
-  newStudentData.getRange('H3').setValue('=importrange("' + oldSsId + '", "Question bank data!$I$1:$I10000")');
-  DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+    // temporarily set old admin data imports
+    initialImportFunction = newStudentData.getRange('A3').getFormula();
+    newStudentData.getRange('A3').setValue('=importrange("' + oldSsId + '", "Question bank data!$A$1:$G10000")');
+    newStudentData.getRange('H3').setValue('=importrange("' + oldSsId + '", "Question bank data!$I$1:$K10000")');
+    DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 
-  let answerSheets = getTestCodes(oldSs);
-  let testScores = [];
+    let answerSheets = getTestCodes(oldSs);
+    let testScores = [];
 
-  for (let s in answerSheets) {
-    let sheetName = answerSheets[s];
-    let oldSheet = oldSs.getSheetByName(sheetName);
-    let subScore = oldSheet.getRange('G1:I1').getValues();
-    testScores.push({
-      'test': sheetName,
-      'scores': subScore
-    })
-  }
-
-  answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
-
-  for (let s in answerSheets) {
-    let sheetName = answerSheets[s];
-    let newSheet = newSs.getSheetByName(sheetName);
-
-    if (newSheet) {
-      Logger.log('Transferring answers for ' + newSheet.getName());
-      let newAnswersLevel1 = newSheet.getRange('C5:C');
-      let newAnswersLevel2 = newSheet.getRange('G5:G');
-      let newAnswersLevel3 = newSheet.getRange('K5:K');
-      let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
-
-      for (let i = 0; i < newRanges.length; i++) {
-        let newSheetFormulas = newRanges[i].getFormulas();
-        let newSheetValues = newRanges[i].getValues();
-
-        if (newSheetFormulas) {
-          for (let row = 0; row < newSheetFormulas.length; row++) {
-            if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
-              newSheetFormulas[row][0] = newSheetValues[row][0];
-            }
-          }
-        }
-        Logger.log('newSheetFormulas: ' + newSheetFormulas);
-        newRanges[i].setValues(newSheetFormulas);
-        let testScore = testScores.find(score => score.test === sheetName);
-        if (testScore) {
-          newSheet.getRange('G1:I1').setValues(testScore.scores);
-        }
+    for (let s in answerSheets) {
+      let sheetName = answerSheets[s];
+      let oldSheet = oldSs.getSheetByName(sheetName);
+      if (oldSheet) {
+        let subScore = oldSheet.getRange('G1:I1').getValues();
+        testScores.push({
+          'test': sheetName,
+          'scores': subScore
+        })
       }
     }
+
+    answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
+
+    // for (let s in answerSheets) {
+    //   let sheetName = answerSheets[s];
+    //   let newSheet = newSs.getSheetByName(sheetName);
+
+    //   if (newSheet) {
+    //     Logger.log('Transferring answers for ' + newSheet.getName());
+    //     let newAnswersLevel1 = newSheet.getRange('C5:C');
+    //     let newAnswersLevel2 = newSheet.getRange('G5:G');
+    //     let newAnswersLevel3 = newSheet.getRange('K5:K');
+    //     let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
+
+    //     for (let i = 0; i < newRanges.length; i++) {
+    //       let newSheetFormulas = newRanges[i].getFormulas();
+    //       let newSheetValues = newRanges[i].getValues();
+
+    //       if (newSheetFormulas) {
+    //         for (let row = 0; row < newSheetFormulas.length; row++) {
+    //           if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
+    //             newSheetFormulas[row][0] = newSheetValues[row][0];
+    //           }
+    //         }
+    //       }
+    //       Logger.log('newSheetFormulas: ' + newSheetFormulas);
+    //       newRanges[i].setValues(newSheetFormulas);
+    //       let testScore = testScores.find(score => score.test === sheetName);
+    //       if (testScore) {
+    //         newSheet.getRange('G1:I1').setValues(testScore.scores);
+    //       }
+    //     }
+    //   }
+    // }
+
+    // build timestamp column
+    let newQbSheet = newSs.getSheetByName('Question bank data');
+    let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000)';
+    let timestampStartRange = newQbSheet.getRange('K2');
+    timestampStartRange.setValue(timestampLookup);
+    let timestampRange = newQbSheet.getRange('K2:K10000');
+    timestampStartRange.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
+    let timestampValues = timestampRange.getValues();
+
+    for (let row = 0; row < timestampRange.length; row ++) {
+      let ssRow = row + 2;
+      if (timestampValues[row][0] === '') {
+        timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
+      }
+    }
+    Logger.log(timestampValues);
+    timestampRange.setValues(timestampValues);
+  }
+  catch (err) {
+    let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
+      .setWidth(400)
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
   }
 
   // revert student ID and SS permissions
