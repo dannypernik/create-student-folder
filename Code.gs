@@ -649,45 +649,45 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
 
     answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
-    // for (let s in answerSheets) {
-    //   let sheetName = answerSheets[s];
-    //   let newSheet = newSs.getSheetByName(sheetName);
+    for (let s in answerSheets) {
+      let sheetName = answerSheets[s];
+      let newSheet = newSs.getSheetByName(sheetName);
 
-    //   if (newSheet) {
-    //     Logger.log('Transferring answers for ' + newSheet.getName());
-    //     let newAnswersLevel1 = newSheet.getRange('C5:C');
-    //     let newAnswersLevel2 = newSheet.getRange('G5:G');
-    //     let newAnswersLevel3 = newSheet.getRange('K5:K');
-    //     let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
+      if (newSheet) {
+        Logger.log('Transferring answers for ' + newSheet.getName());
+        let newAnswersLevel1 = newSheet.getRange('C5:C');
+        let newAnswersLevel2 = newSheet.getRange('G5:G');
+        let newAnswersLevel3 = newSheet.getRange('K5:K');
+        let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
 
-    //     for (let i = 0; i < newRanges.length; i++) {
-    //       let newSheetFormulas = newRanges[i].getFormulas();
-    //       let newSheetValues = newRanges[i].getValues();
+        for (let i = 0; i < newRanges.length; i++) {
+          let newSheetFormulas = newRanges[i].getFormulas();
+          let newSheetValues = newRanges[i].getValues();
 
-    //       if (newSheetFormulas) {
-    //         for (let row = 0; row < newSheetFormulas.length; row++) {
-    //           if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
-    //             newSheetFormulas[row][0] = newSheetValues[row][0];
-    //           }
-    //         }
-    //       }
-    //       Logger.log('newSheetFormulas: ' + newSheetFormulas);
-    //       newRanges[i].setValues(newSheetFormulas);
-    //       let testScore = testScores.find(score => score.test === sheetName);
-    //       if (testScore) {
-    //         newSheet.getRange('G1:I1').setValues(testScore.scores);
-    //       }
-    //     }
-    //   }
-    // }
+          if (newSheetFormulas) {
+            for (let row = 0; row < newSheetFormulas.length; row++) {
+              if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
+                newSheetFormulas[row][0] = newSheetValues[row][0];
+              }
+            }
+          }
+          Logger.log('newSheetFormulas: ' + newSheetFormulas);
+          newRanges[i].setValues(newSheetFormulas);
+          let testScore = testScores.find(score => score.test === sheetName);
+          if (testScore) {
+            newSheet.getRange('G1:I1').setValues(testScore.scores);
+          }
+        }
+      }
+    }
 
     // build timestamp column
     let newQbSheet = newSs.getSheetByName('Question bank data');
     let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
-    let timestampStartRange = newQbSheet.getRange('K2');
-    timestampStartRange.setValue(timestampLookup);
+    let timestampStartCell = newQbSheet.getRange('K2');
+    timestampStartCell.setValue(timestampLookup);
     let timestampRange = newQbSheet.getRange('K2:K10000');
-    timestampStartRange.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
+    timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     let timestampValues = timestampRange.getValues();
 
     for (let row = 0; row < timestampValues.length; row ++) {
@@ -699,6 +699,7 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
     }
     Logger.log(timestampValues);
     timestampRange.setValues(timestampValues);
+    timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
   }
   catch (err) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
