@@ -690,9 +690,10 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
     timestampStartRange.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     let timestampValues = timestampRange.getValues();
 
-    for (let row = 0; row < timestampRange.length; row ++) {
+    for (let row = 0; row < timestampValues.length; row ++) {
       let ssRow = row + 2;
       if (timestampValues[row][0] === '') {
+        Logger('blank row: ' + ssRow);
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
       }
     }
