@@ -683,7 +683,7 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
 
     // build timestamp column
     let newQbSheet = newSs.getSheetByName('Question bank data');
-    let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000)';
+    let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
     let timestampStartRange = newQbSheet.getRange('K2');
     timestampStartRange.setValue(timestampLookup);
     let timestampRange = newQbSheet.getRange('K2:K10000');
@@ -693,7 +693,7 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
     for (let row = 0; row < timestampValues.length; row ++) {
       let ssRow = row + 2;
       if (timestampValues[row][0] === '') {
-        Logger('blank row: ' + ssRow);
+        Logger.log('blank row: ' + ssRow);
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
       }
     }
