@@ -590,13 +590,23 @@ function transferOldStudentData() {
     oldSsId = oldAdminDataUrl;
   }
 
-  prompt = ui.prompt('New admin analysis spreadsheet URL or ID - leave blank to use current spreadsheet:', ui.ButtonSet.OK_CANCEL);
+  let newSsPromptMsg, isTemplate;
+  if (SpreadsheetApp.getActiveSpreadsheet().getName().toLowerCase().includes('template')) {
+    newSsPromptMsg = 'New admin analysis spreadsheet URL or ID:';
+    isTemplate = true;
+  }
+  else {
+    newSsPromptMsg = 'New admin analysis spreadsheet URL or ID - leave blank to use current spreadsheet:';
+    isTemplate = false;
+  }
+
+  prompt = ui.prompt(newSsPromptMsg, ui.ButtonSet.OK_CANCEL);
   let newAdminDataUrl = prompt.getResponseText();
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
   let newSsId;
-  if (newAdminDataUrl === '') {
+  if (newAdminDataUrl === '' && !isTemplate) {
     newSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
   else if (newAdminDataUrl.includes('/d/')) {
@@ -625,7 +635,7 @@ function transferStudentData(oldSsId, newSsId = SpreadsheetApp.getActiveSpreadsh
 
   for (let s in answerSheets) {
     let sheetName = answerSheets[s];
-    let oldSheet = oldSs.getSheetByName(sheet);
+    let oldSheet = oldSs.getSheetByName(sheetName);
     let subScore = oldSheet.getRange('G1:I1').getValues();
     testScores.push({
       'test': sheetName,
