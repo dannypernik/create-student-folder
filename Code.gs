@@ -207,33 +207,42 @@ var actSheetDataUrls = {
 };
 
 function linkSheets(folderId, nameOnReport = false) {
-  var folder = DriveApp.getFolderById(folderId);
-  var files = folder.getFiles();
-  var subFolders = DriveApp.getFolderById(folderId).getFolders();
+  let folder = DriveApp.getFolderById(folderId);
+  let files = folder.getFiles();
+  let subFolders = DriveApp.getFolderById(folderId).getFolders();
 
   while (files.hasNext()) {
-    file = files.next();
-    fileName = file.getName();
+    let file = files.next();
+    let fileName = file.getName();
+    let fileId = file.getId();
     if (fileName.includes('SAT')) {
       if (fileName.toLowerCase().includes('student answer sheet')) {
-        satSheetIds.student = file.getId();
+        satSheetIds.student = fileId;
         DriveApp.getFileById(satSheetIds.student).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-      } else if (fileName.toLowerCase().includes('answer analysis')) {
-        satSheetIds.admin = file.getId();
+      }
+      else if (fileName.toLowerCase().includes('answer analysis')) {
+        satSheetIds.admin = fileId;
+        let ss = SpreadsheetApp.openById(fileId);
 
-        var ss = SpreadsheetApp.openById(file.getId());
         for (i in ss.getSheets()) {
-          var s = ss.getSheets()[i];
+          let s = ss.getSheets()[i];
+          let sName = s.getName();
+          let answerSheets = getTestCodes(ss);
+          answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques')
 
-          if (s.getName().toLowerCase().includes('analysis') || s.getName().toLowerCase().includes('opportunity')) {
+          if (sName.toLowerCase().includes('analysis') || sName.toLowerCase().includes('opportunity')) {
             if (nameOnReport) {
               s.getRange('D4').setValue('for ' + nameOnReport);
             }
-          } else {
-            var protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+          }
+          else if (answerSheets.includes(sName)) {
+            let protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
             for (var p = 0; p < protections.length; p++) {
               protections[p].setUnprotectedRanges([s.getRange('C5:C'), s.getRange('G5:G'), s.getRange('K5:K')]);
             }
+          }
+          else if (sName.toLowerCase() === 'rev sheets') {
+            s.protect().setWarningOnly(true).setUnprotectedRanges(s.getRange('D5:D'), s.getRange('I5:I'));
           }
         }
         let revBackend = ss.getSheetByName('Rev sheet backend');
@@ -246,7 +255,8 @@ function linkSheets(folderId, nameOnReport = false) {
       if (fileName.toLowerCase().includes('student answer sheet')) {
         actSheetIds.student = file.getId();
         DriveApp.getFileById(actSheetIds.student).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-      } else if (fileName.toLowerCase().includes('answer analysis')) {
+      }
+      else if (fileName.toLowerCase().includes('answer analysis')) {
         actSheetIds.admin = file.getId();
       }
     }
