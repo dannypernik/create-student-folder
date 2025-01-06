@@ -238,11 +238,8 @@ function linkSheets(folderId, nameOnReport = false) {
           else if (answerSheets.includes(sName)) {
             let protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
             for (var p = 0; p < protections.length; p++) {
-              protections[p].setUnprotectedRanges([s.getRange('C5:C'), s.getRange('G5:G'), s.getRange('K5:K')]);
+              protections[p].remove();
             }
-          }
-          else if (sName.toLowerCase() === 'rev sheets') {
-            s.protect().setWarningOnly(true).setUnprotectedRanges(s.getRange('D5:D'), s.getRange('I5:I'));
           }
         }
         let revBackend = ss.getSheetByName('Rev sheet backend');
