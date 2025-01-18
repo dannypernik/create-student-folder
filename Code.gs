@@ -1,10 +1,12 @@
-function NewSatFolder() {
-  let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let file = DriveApp.getFileById(ss.getId());
-  let sourceFolder = file.getParents().next();
-  let sourceFolderId = sourceFolder.getId();
-  let parentFolderId = sourceFolder.getParents().next().getId();
-  let studentName;
+function NewSatFolder(sourceFolderId, parentFolderId) {
+  let ss, file, sourceFolder, studentName;
+  if (sourceFolderId === undefined || parentFolderId === undefined) {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    file = DriveApp.getFileById(ss.getId());
+    sourceFolder = file.getParents().next();
+    sourceFolderId = sourceFolder.getId();
+    parentFolderId = sourceFolder.getParents().next().getId();
+  }
 
   let ui = SpreadsheetApp.getUi();
   let prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
@@ -19,20 +21,23 @@ function NewSatFolder() {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'sat');
-  linkSheets(newFolderId, studentName);
+  linkSheets(newFolderId, studentName, 'sat');
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
-    .setWidth(250) //optional
-    .setHeight(50); //optional
+    .setWidth(250)
+    .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'SAT folder created successfully');
 }
 
-function NewActFolder() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var file = DriveApp.getFileById(ss.getId());
-  var sourceFolder = file.getParents().next();
-  var sourceFolderId = sourceFolder.getId();
-  var parentFolderId = sourceFolder.getParents().next().getId();
+function NewActFolder(sourceFolderId, parentFolderId) {
+  let ss, file, sourceFolder, studentName;
+  if (sourceFolderId === undefined || parentFolderId === undefined) {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    file = DriveApp.getFileById(ss.getId());
+    sourceFolder = file.getParents().next();
+    sourceFolderId = sourceFolder.getId();
+    parentFolderId = sourceFolder.getParents().next().getId();
+  }
 
   var ui = SpreadsheetApp.getUi();
   var prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
@@ -40,27 +45,30 @@ function NewActFolder() {
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   } else {
-    var studentName = prompt.getResponseText();
+    studentName = prompt.getResponseText();
   }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'act');
-  linkSheets(newFolderId, studentName);
+  linkSheets(newFolderId, studentName, 'act');
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
-    .setWidth(250) //optional
-    .setHeight(50); //optional
+    .setWidth(250)
+    .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'ACT folder created successfully');
 }
 
-function NewTestPrepFolder() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var file = DriveApp.getFileById(ss.getId());
-  var sourceFolder = file.getParents().next();
-  var sourceFolderId = sourceFolder.getId();
-  var parentFolderId = sourceFolder.getParents().next().getId();
+function NewTestPrepFolder(sourceFolderId, parentFolderId) {
+  let ss, file, sourceFolder, studentName;
+  if (sourceFolderId === undefined || parentFolderId === undefined) {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    file = DriveApp.getFileById(ss.getId());
+    sourceFolder = file.getParents().next();
+    sourceFolderId = sourceFolder.getId();
+    parentFolderId = sourceFolder.getParents().next().getId();
+  }
 
   var ui = SpreadsheetApp.getUi();
   var prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
@@ -68,18 +76,18 @@ function NewTestPrepFolder() {
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   } else {
-    var studentName = prompt.getResponseText();
+    studentName = prompt.getResponseText();
   }
 
   const newFolder = DriveApp.getFolderById(parentFolderId).createFolder(studentName);
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'all');
-  linkSheets(newFolderId, studentName);
+  linkSheets(newFolderId, studentName, 'all');
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
-    .setWidth(250) //optional
-    .setHeight(50); //optional
+    .setWidth(250)
+    .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Test prep folder created successfully');
 }
 
@@ -168,8 +176,6 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType);
     }
   }
-
-  //SpreadsheetApp.getUi().alert("copyFolder() ended");
 }
 
 var satSheetIds = {
@@ -196,7 +202,7 @@ var actSheetDataUrls = {
   student: null,
 };
 
-function linkSheets(folderId, studentName='') {
+function linkSheets(folderId, studentName='', prepType='all') {
   let folder = DriveApp.getFolderById(folderId);
   let files = folder.getFiles();
   let subFolders = DriveApp.getFolderById(folderId).getFolders();
@@ -205,7 +211,7 @@ function linkSheets(folderId, studentName='') {
     let file = files.next();
     let fileName = file.getName();
     let fileId = file.getId();
-    if (fileName.includes('SAT')) {
+    if (fileName.includes('SAT') && prepType !== 'act') {
       if (fileName.toLowerCase().includes('student answer sheet')) {
         satSheetIds.student = fileId;
         DriveApp.getFileById(satSheetIds.student).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
@@ -218,12 +224,14 @@ function linkSheets(folderId, studentName='') {
           let s = ss.getSheets()[i];
           let sName = s.getName();
           let answerSheets = getTestCodes(ss);
-          answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques')
+          answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
+          Logger.log(answerSheets);
 
           if (sName.toLowerCase().includes('analysis') || sName.toLowerCase().includes('opportunity')) {
             s.getRange('D4').setValue('for ' + studentName);
           }
           else if (answerSheets.includes(sName)) {
+            Logger.log(sName);
             let protections = s.getProtections(SpreadsheetApp.ProtectionType.SHEET);
             for (var p = 0; p < protections.length; p++) {
               protections[p].remove();
@@ -236,7 +244,7 @@ function linkSheets(folderId, studentName='') {
       }
     }
 
-    if (fileName.includes('ACT')) {
+    if (fileName.includes('ACT') && prepType !== 'sat') {
       if (fileName.toLowerCase().includes('student answer sheet')) {
         actSheetIds.student = file.getId();
         DriveApp.getFileById(actSheetIds.student).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
@@ -247,48 +255,50 @@ function linkSheets(folderId, studentName='') {
     }
   }
 
-  let isSet = {
-    adminStudentRev: false,
-  };
+  while (subFolders.hasNext()) {
+    var subFolder = subFolders.next();
+    linkSheets(subFolder.getId(), studentName);
+  }
 
-  if (!isSet.adminStudentRev && satSheetIds.student && satSheetIds.admin) {
+  if (satSheetIds.student && satSheetIds.admin) {
     let satAdminSheet = SpreadsheetApp.openById(satSheetIds.admin);
     let satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
 
-    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('D2').getValue();
+    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('U3').getValue();
     let revDataSheet = SpreadsheetApp.openById(revDataId);
 
     let studentRevDataSheet = revDataSheet.getSheetByName(studentName);
+    Logger.log('studentRevDataSheet: ' + studentRevDataSheet);
     if (!studentRevDataSheet) {
-      studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
+      try {
+        studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
+      }
+      catch (err) {
+        let ui = SpreadsheetApp.getUi();
+        let continueScript = ui.prompt('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
+
+        if (continueScript === ui.Button.NO) {
+          let htmlOutput = HtmlService.createHtmlOutput('<p>Please use a unique name for the new student or delete/rename the "'+ studentName + '" sheet from your <a href="https://docs.google.com/spreadsheets/d/' + revDataId + '">Rev sheet data</a></p>')
+            .setWidth(400)
+          SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Duplicate student name');
+          return;
+        }
+      }
     }
 
-    let adminRevSheet = satAdminSheet.getSheetByName('Rev sheets');
-    adminRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + studentName + '!B5:C")');
-    adminRevSheet.getRange('G5').setValue('=importrange("' + revDataId + '", "' + studentName + '!E5:F")');
-
-    let studentRevSheet = satStudentSheet.getSheetByName('Rev sheets');
-    studentRevSheet.getRange('B5').setValue('=importrange("' + revDataId + '", "' + studentName + '!B5:C")');
-    studentRevSheet.getRange('F5').setValue('=importrange("' + revDataId + '", "' + studentName + '!E5:F")');
+    let studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
+    studentQBSheet.getRange('U2').setValue(studentName);
+    studentQBSheet.getRange('U4').setValue(satSheetIds.admin);
 
     SpreadsheetApp.openById(satSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
-
-    isSet.adminStudentRev = true;
-
-    // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('U2').setValue(satSheetIds.admin);
-    // SpreadsheetApp.openById(satSheetIds.student).getSheetByName('Question bank data').getRange('I2').setValue('=iferror(importrange("' + satSheetIds.admin + '","Question bank data!I2:I"),"")');
-    // SpreadsheetApp.openById(satSheetIds.student).getSheets()[0].getRange('D1').setValue('=importrange("' + satSheetIds.admin + '","Question bank data!V1")');
   }
+
   Logger.log('actSheetIds.student: ' + actSheetIds.student);
   Logger.log('actSheetIds.admin: ' + actSheetIds.admin);
+
   if (actSheetIds.student && actSheetIds.admin) {
     SpreadsheetApp.openById(actSheetIds.admin).getSheetByName('Student responses').getRange('B1').setValue(actSheetIds.student);
-  }
-
-  while (subFolders.hasNext()) {
-    var subFolder = subFolders.next();
-    linkSheets(subFolder.getId(), studentName);
   }
 }
 
@@ -318,16 +328,20 @@ function createRevSheet(sub, subIndex) {
     let revResponseSheet = ss.getSheetByName('Rev sheets');
     let subBackendOffset = subIndex * 4;
     let revBackend = ss.getSheetByName('Rev sheet backend');
-    let folderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
-    let revSheetSubjectFolderId = folderIdCell.getValue();
+    let revSubjectFolderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
+    let revSubjectSortStart = revBackend.getRange(2, 1 + subBackendOffset).getValue();
+    let revSubjectFolderId = revSubjectFolderIdCell.getValue();
+    let revSheetFolderIdCell = revBackend.getRange('U2');
+    let revSheetFolderId = revSheetFolderIdCell.getValue();
     // let folderKeyIdCell = revBackend.getRange(3, 3 + subBackendOffset);
     // let revKeySubjectFolderId = folderKeyIdCell;
-    let satFolder, studentFolder;
-    let revDataSs = SpreadsheetApp.openById(revBackend.getRange('D2').getValue());
     let studentName = revBackend.getRange('K2').getValue();
+    let revDataSsId = revBackend.getRange('U3').getValue()
+    let revDataSs = SpreadsheetApp.openById(revDataSsId);
     let revDataSheet = revDataSs.getSheetByName(studentName);
+    let revSheetFolder, satFolder, studentFolder;
 
-    if (!revBackend.getRange(2, 1 + subBackendOffset).getValue()) {
+    if (!revSubjectSortStart) {
       let ui = SpreadsheetApp.getUi();
       ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
       return;
@@ -343,12 +357,21 @@ function createRevSheet(sub, subIndex) {
     }
 
     try {
-      DriveApp.getFolderById(revSheetSubjectFolderId);
+      revSheetFolder = DriveApp.getFolderById(revSheetFolderId);
     } 
     catch {
-      Logger.log('Folder ID ' + revSheetSubjectFolderId + ' not found');
-      revSheetSubjectFolderId = '';
-      folderIdCell.setValue(revSheetSubjectFolderId);
+      Logger.log('Rev folder ID ' + revSheetFolderId + ' not found');
+      revSheetFolderId = '';
+      revSheetFolderIdCell.setValue(revSheetFolderId);
+    }
+
+    try {
+      DriveApp.getFolderById(revSubjectFolderId);
+    } 
+    catch {
+      Logger.log('Rev subject folder ID ' + revSubjectFolderId + ' not found');
+      revSubjectFolderId = '';
+      revSubjectFolderIdCell.setValue(revSubjectFolderId);
     }
 
     // try {
@@ -357,100 +380,64 @@ function createRevSheet(sub, subIndex) {
     // catch {
     //   Logger.log('Key folder ID ' + revKeySubjectFolderId + ' not found');
     //   revKeySubjectFolderId = '';
-    //   folderIdCell.setValue(revKeySubjectFolderId);
+    //   revSubjectFolderIdCell.setValue(revKeySubjectFolderId);
     // }
 
     try {
-      if (!revSheetSubjectFolderId) {
+      if (!revSubjectFolderId) {
         if (sub === 'RW') {
           var subject = 'Reading & Writing';
         } else {
           var subject = 'Math';
         }
 
-        let adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
-        let adminSubfolders = adminFolder.getFolders();
-        let revSheetFolder, revKeyFolder;
-        
-        if (adminSubfolders.hasNext()) {
-          while (adminSubfolders.hasNext()) {
-            let adminSubfolder = adminSubfolders.next();
-            let adminSubfolderName = adminSubfolder.getName();
-
-            if (adminSubfolderName.includes('Rev sheets')) {
-              revSheetFolder = adminSubfolder;
-              revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
-              break;
-            }
-            else if (adminSubfolderName.includes('SAT')) {
-              satFolder = adminSubfolder;
-              let subfolders = satFolder.getFolders();
-              while (subfolders.hasNext()) {
-                let subfolder = subfolders.next();
-
-                if (subfolder.getName().includes('Rev')) {
-                  revSheetFolder = subfolder;
-                  revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
-                  break;
-                }
-              }
-
-              if (!revSheetSubjectFolderId) {
-                revSheetSubjectFolderId = satFolder.createFolder('Rev sheets').createFolder(subject).getId();
-                break;
-              }
-              else {
-                break;
-              }
-            }
-            else if (adminSubfolderName.toLowerCase().includes(studentName.toLowerCase())) {
-              studentFolder = adminSubfolder;
-              let subfolders = studentFolder.getFolders();
-              while (subfolders.hasNext()) {
-                let subfolder = subfolders.next();
-                let subfolderName = subfolder.getName();
-
-                if (subfolder.getName().includes('Rev sheets')) {
-                  revSheetFolder = subfolder;
-                  revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
-                  break;
-                } else if (subfolderName.includes('SAT')) {
-                  satFolder = subfolder;
-                  let satSubfolders = satFolder.getFolders();
-                  while (satSubfolders.hasNext()) {
-                    let satSubfolder = satSubfolders.next();
-                    let satSubfolderName = satSubfolder.getName();
-
-                    if (satSubfolderName.includes('Rev sheets')) {
-                      revSheetFolder = subfolder;
-                      revSheetSubjectFolderId = getRevSubjectFolderId(revSheetFolder);
-                      break;
-                    }
-                  }
-
-                  if (!revSheetSubjectFolderId) {
-                    revSheetSubjectFolderId = satFolder.createFolder('Rev sheets').createFolder(subject).getId();
-                  }
-                  else {
-                    break;
-                  }
-                }
-              }
-              if (!revSheetSubjectFolderId) {
-                revSheetSubjectFolderId = studentFolder.createFolder('Rev sheets').createFolder(subject).getId();
-              }
-            }
-            else {
-              revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
-              break;
-            }
-          }
+        if (revSheetFolderId) {
+          revSubjectFolderId = revSheetFolder.createFolder(subject).getId();
         }
         else {
-          revSheetSubjectFolderId = adminFolder.createFolder('Rev sheets').createFolder(subject).getId();
+          let adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+          let adminSubfolders = adminFolder.getFolders();
+
+          if (adminSubfolders.hasNext()) {
+            while (adminSubfolders.hasNext()) {
+              let adminSubfolder = adminSubfolders.next();
+              let adminSubfolderName = adminSubfolder.getName();
+
+              if (adminSubfolderName.includes('SAT')) {
+                satFolder = adminSubfolder;
+                revSheetFolder = satFolder.createFolder('Rev sheets');
+                revSheetFolderId = revSheetFolder.getId();
+                revSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+                break;
+              }
+              else if (adminSubfolderName.toLowerCase().includes(studentName.toLowerCase())) {
+                studentFolder = adminSubfolder;
+                let studentSubfolders = studentFolder.getFolders();
+                while (studentSubfolders.hasNext()) {
+                  let studentSubfolder = studentSubfolders.next();
+                  let studentSubfolderName = studentSubfolder.getName();
+
+                  if (studentSubfolderName.includes('SAT')) {
+                    satFolder = studentSubfolder;
+                    revSheetFolder = satFolder.createFolder('Rev sheets');
+                    revSheetFolderId = revSheetFolder.getId();
+                    revSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+                  }
+                }
+              }
+            }
+          }
+
+          if (!revSheetFolderId) {
+            revSheetFolder = adminFolder.createFolder('Rev sheets');
+            revSheetFolderId = revSheetFolder.getId();
+            revSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+          }
+
+          revSheetFolderIdCell.setValue(revSheetFolderId);
         }
 
-        folderIdCell.setValue(revSheetSubjectFolderId);
+        revSubjectFolderIdCell.setValue(revSubjectFolderId);
       }
     }
     catch(err) {
@@ -499,8 +486,6 @@ function createRevSheet(sub, subIndex) {
       return;
     }
 
-    Logger.log(revDataSheet.getSheetName());
-
     var firstEmptyRow = getFirstEmptyRow(revDataSheet, 2 + subIndex * 3);
     if (firstEmptyRow === 5) {
       var newRevSheetNumber = 1;
@@ -528,7 +513,7 @@ function createRevSheet(sub, subIndex) {
 
     //* Create worksheets
     SpreadsheetApp.flush();
-    savePdf(ss, revSheet, pdfName, revSheetSubjectFolderId);
+    savePdf(ss, revSheet, pdfName, revSubjectFolderId);
     Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
     //*/
 
@@ -538,7 +523,7 @@ function createRevSheet(sub, subIndex) {
     revSheet.hideColumns(5);
 
     SpreadsheetApp.flush();
-    savePdf(ss, revSheet, pdfName + '~Key', revSheetSubjectFolderId);
+    savePdf(ss, revSheet, pdfName + '~Key', revSubjectFolderId);
     Logger.log(sub + ' Rev key #' + newRevSheetNumber + ' saved');
     //*/
 
@@ -548,7 +533,7 @@ function createRevSheet(sub, subIndex) {
     revSheet.showRows(1, revSheet.getMaxRows());
     revSheet.hideSheet();
 
-    let htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSheetSubjectFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
+    let htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSubjectFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
       .setWidth(250) //optional
       .setHeight(50); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
@@ -560,21 +545,21 @@ function createRevSheet(sub, subIndex) {
 }
 
 function getRevSubjectFolderId(revSheetFolder) {
-  let revSheetSubjectFolderId;
+  let revSubjectFolderId;
 
   while (revSheetFolder.hasNext()) {
     let subfolder = revSheetFolder.next();
     let subfolderName = subfolder.getName();
     if (subfolderName.toLowerCase().includes(subject.toLowerCase())) {
-      revSheetSubjectFolderId = subfolder.getId();
+      revSubjectFolderId = subfolder.getId();
       break;
     }
   }
-  if (!revSheetSubjectFolderId) {
-    revSheetSubjectFolderId = revSheetFolder.createFolder(subject).getId();
+  if (!revSubjectFolderId) {
+    revSubjectFolderId = revSheetFolder.createFolder(subject).getId();
   }
 
-  return revSheetSubjectFolderId;
+  return revSubjectFolderId;
 }
 
 function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
@@ -635,17 +620,28 @@ function transferOldStudentData() {
 }
 
 function transferStudentData(oldSsId) {
-  let newSs = SpreadsheetApp.getActiveSpreadsheet();
+  let newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
+
+  newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+  let newStudentSs = SpreadsheetApp.openById(newStudentSsId);
+  
+  let ui = SpreadsheetApp.getUi();
+  let confirm = ui.alert('Warning: This script will overwrite data in the new student spreadsheet. Continue?', ui.ButtonSet.YES_NO);
+  if (confirm === ui.Button.NO) {
+    return;
+  }
+
   let oldSs, newStudentData, initialImportFunction;
   try {
     oldSs = SpreadsheetApp.openById(oldSsId);
-    newStudentData = newSs.getSheetByName('Student responses');
+    newStudentData = newAdminSs.getSheetByName('Student responses');
 
     // temporarily set old admin data imports
     initialImportFunction = newStudentData.getRange('A3').getFormula();
     newStudentData.getRange('A3').setValue('=importrange("' + oldSsId + '", "Question bank data!$A$1:$G10000")');
     newStudentData.getRange('H3').setValue('=importrange("' + oldSsId + '", "Question bank data!$I$1:$K10000")');
     DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+    DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
 
     let answerSheets = getTestCodes(oldSs);
     let testScores = [];
@@ -666,28 +662,32 @@ function transferStudentData(oldSsId) {
 
     for (let s in answerSheets) {
       let sheetName = answerSheets[s];
-      let newSheet = newSs.getSheetByName(sheetName);
+      let newSheet = newAdminSs.getSheetByName(sheetName);
+      let newStudentSheet = newStudentSs.getSheetByName(sheetName);
 
       if (newSheet) {
         Logger.log('Transferring answers for ' + newSheet.getName());
         let newAnswersLevel1 = newSheet.getRange('C5:C');
         let newAnswersLevel2 = newSheet.getRange('G5:G');
         let newAnswersLevel3 = newSheet.getRange('K5:K');
+        let newStudentLevel1 = newStudentSheet.getRange('C5:C');
+        let newStudentLevel2 = newStudentSheet.getRange('G5:G');
+        let newStudentLevel3 = newStudentSheet.getRange('K5:K');
         let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
+        let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
 
         for (let i = 0; i < newRanges.length; i++) {
-          let newSheetFormulas = newRanges[i].getFormulas();
+          // let newSheetFormulas = newRanges[i].getFormulas();
           let newSheetValues = newRanges[i].getValues();
 
-          if (newSheetFormulas) {
-            for (let row = 0; row < newSheetFormulas.length; row++) {
-              if (newSheetValues[row][0] !== '' && newSheetValues[row][0] !== 'not found') {
-                newSheetFormulas[row][0] = newSheetValues[row][0];
-              }
+          for (let row = 0; row < newSheetValues.length; row++) {
+            if (newSheetValues[row][0] === 'not found') {
+              newSheetValues[row][0] = '';
             }
           }
-          Logger.log('newSheetFormulas: ' + newSheetFormulas);
-          newRanges[i].setValues(newSheetFormulas);
+
+          newStudentRanges[i].setValues(newSheetValues);
+
           let testScore = testScores.find(score => score.test === sheetName);
           if (testScore) {
             newSheet.getRange('G1:I1').setValues(testScore.scores);
@@ -696,8 +696,21 @@ function transferStudentData(oldSsId) {
       }
     }
 
+    // set data to new student SS
+    // for (let s in answerSheets) {
+    //   let sheetName = answerSheets[s];
+    //   let newStudentSheet = newAdminSs.getSheetByName(sheetName);
+
+    //   if (newStudentSheet) {
+
+    //     for (let i = 0; i < newStudentRanges.length; i++) {
+          
+    //     }
+    //   }
+    // }
+    
     // build timestamp column
-    let newQbSheet = newSs.getSheetByName('Question bank data');
+    let newQbSheet = newAdminSs.getSheetByName('Question bank data');
     let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
     let timestampStartCell = newQbSheet.getRange('K2');
     timestampStartCell.setValue(timestampLookup);
@@ -715,6 +728,11 @@ function transferStudentData(oldSsId) {
     Logger.log(timestampValues);
     timestampRange.setValues(timestampValues);
     timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
+
+    let htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
+    .setWidth(250)
+    .setHeight(50);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
   }
   catch (err) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
@@ -726,6 +744,7 @@ function transferStudentData(oldSsId) {
   newStudentData.getRange('A3').setValue(initialImportFunction);
   newStudentData.getRange('H3').setValue('');
   DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 }
 
 function getLastFilledRow(sheet, col) {
