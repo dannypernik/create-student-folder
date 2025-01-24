@@ -486,18 +486,24 @@ function createRevSheet(sub, subIndex) {
       return;
     }
 
-    var firstEmptyRow = getFirstEmptyRow(revDataSheet, 2 + subIndex * 3);
+    let revDataLastQuestionCell, revDataLastQuestion, newRevSheetNumber;
+    let revDataSubjectColumn = 2 + subIndex * 3;
+    let revResponseSubjectColumn = 2 + subIndex * 7;
+    let firstEmptyRow = getFirstEmptyRow(revDataSheet, revDataSubjectColumn);
+    let lastAnsweredQuestionRow = getFirstEmptyRow(revResponseSheet, revResponseSubjectColumn) - 1;
+
     if (firstEmptyRow === 5) {
-      var newRevSheetNumber = 1;
+      newRevSheetNumber = 1;
     } else {
-      var revSheetLastQuestion = revDataSheet
-        .getRange(firstEmptyRow - 1, 2 + subIndex * 3)
-        .getValue()
-        .toString();
-      Logger.log('revSheetLastQuestion' + revSheetLastQuestion);
-      var newRevSheetNumber = parseInt(revSheetLastQuestion.substring(revSheetLastQuestion.lastIndexOf(' ') + 1, revSheetLastQuestion.indexOf('.'))) + 1;
+      revDataLastQuestionCell = revDataSheet.getRange(firstEmptyRow - 1, revDataSubjectColumn)
+      revDataLastQuestion =  revDataLastQuestionCell.getValue().toString();
+      Logger.log('revDataLastQuestion' + revDataLastQuestion);
+      newRevSheetNumber = parseInt(revDataLastQuestion.substring(revDataLastQuestion.lastIndexOf(' ') + 1, revDataLastQuestion.indexOf('.'))) + 1;
+      revResponseSheet.getRange(5, revResponseSubjectColumn, lastAnsweredQuestionRow - 4).copyTo(revResponseSheet.getRange(5, revResponseSubjectColumn), {contentsOnly: true});
     }
     revSheet.getRange('E1').setValue(newRevSheetNumber);
+    
+    
 
     // hide unneeded rows, column A+G
     revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
@@ -528,7 +534,7 @@ function createRevSheet(sub, subIndex) {
     //*/
 
     var dataToCopy = revSheet.getRange(6, 1, row - 5, 2).getValues();
-    revDataSheet.getRange(firstEmptyRow, 2 + subIndex * 3, row - 5, 2).setValues(dataToCopy);
+    revDataSheet.getRange(firstEmptyRow, revDataSubjectColumn, row - 5, 2).setValues(dataToCopy);
 
     revSheet.showRows(1, revSheet.getMaxRows());
     revSheet.hideSheet();
@@ -568,8 +574,7 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 
   var url_ext =
     'export?exportFormat=pdf&format=pdf' +
-    '&gid=' +
-    sheetId +
+    '&gid=' + sheetId +
     // following parameters are optional...
     '&size=A4' + // paper size: legal / letter / A4
     '&portrait=true' + // orientation, false for landscape
@@ -603,52 +608,64 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 
 function transferOldStudentData() {
   let ui = SpreadsheetApp.getUi();
-  let prompt = ui.prompt('Old admin analysis spreadsheet URL or ID:', ui.ButtonSet.OK_CANCEL);
+  let prompt = ui.prompt(
+    'Old admin analysis spreadsheet URL or ID - leave blank \r\n' + 
+    'to update student sheet with this admin spreadsheet\'s data:',
+    ui.ButtonSet.OK_CANCEL);
   let oldAdminDataUrl = prompt.getResponseText();
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
   }
-  let oldSsId;
-  if (oldAdminDataUrl.includes('/d/')) {
-    oldSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
+
+  let oldAdminSsId;
+  if (oldAdminDataUrl === '') {
+    oldAdminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  }
+  else if (oldAdminDataUrl.includes('/d/')) {
+    oldAdminSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
   }
   else {
-    oldSsId = oldAdminDataUrl;
+    oldAdminSsId = oldAdminDataUrl;
   }
 
-  transferStudentData(oldSsId);
+  transferStudentData(oldAdminSsId);
 }
 
-function transferStudentData(oldSsId) {
+function transferStudentData(oldAdminSsId) {
   let newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
 
   newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
   let newStudentSs = SpreadsheetApp.openById(newStudentSsId);
-  
-  let ui = SpreadsheetApp.getUi();
-  let confirm = ui.alert('Warning: This script will overwrite data in the new student spreadsheet. Continue?', ui.ButtonSet.YES_NO);
-  if (confirm === ui.Button.NO) {
-    return;
-  }
+  // temporarily relax permissions
+  DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
 
-  let oldSs, newStudentData, initialImportFunction;
+  let oldAdminSs, newStudentData, initialImportFunction;
   try {
-    oldSs = SpreadsheetApp.openById(oldSsId);
+    oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
     newStudentData = newAdminSs.getSheetByName('Student responses');
-
-    // temporarily set old admin data imports
     initialImportFunction = newStudentData.getRange('A3').getFormula();
-    newStudentData.getRange('A3').setValue('=importrange("' + oldSsId + '", "Question bank data!$A$1:$G10000")');
-    newStudentData.getRange('H3').setValue('=importrange("' + oldSsId + '", "Question bank data!$I$1:$K10000")');
-    DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
 
-    let answerSheets = getTestCodes(oldSs);
+    if (oldAdminSsId !== newAdminSs.getId()) {
+      let ui = SpreadsheetApp.getUi();
+      let confirm = ui.alert(
+        'Warning: This script will overwrite data \r\n' + 
+        'in the new student spreadsheet. Continue?',
+        ui.ButtonSet.YES_NO);
+      if (confirm === ui.Button.NO) {
+        return;
+      }
+      // temporarily set old admin data imports
+      newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
+      newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
+    }
+
+    let answerSheets = getTestCodes(oldAdminSs);
     let testScores = [];
 
     for (let s in answerSheets) {
       let sheetName = answerSheets[s];
-      let oldSheet = oldSs.getSheetByName(sheetName);
+      let oldSheet = oldAdminSs.getSheetByName(sheetName);
       if (oldSheet) {
         let subScore = oldSheet.getRange('G1:I1').getValues();
         testScores.push({
@@ -662,35 +679,41 @@ function transferStudentData(oldSsId) {
 
     for (let s in answerSheets) {
       let sheetName = answerSheets[s];
-      let newSheet = newAdminSs.getSheetByName(sheetName);
+      let newAdminSheet = newAdminSs.getSheetByName(sheetName);
       let newStudentSheet = newStudentSs.getSheetByName(sheetName);
 
-      if (newSheet) {
-        Logger.log('Transferring answers for ' + newSheet.getName());
-        let newAnswersLevel1 = newSheet.getRange('C5:C');
-        let newAnswersLevel2 = newSheet.getRange('G5:G');
-        let newAnswersLevel3 = newSheet.getRange('K5:K');
+      if (newAdminSheet) {
+        Logger.log('Transferring answers for ' + newAdminSheet.getName());
+        let newAnswersLevel1 = newAdminSheet.getRange('C5:C');
+        let newAnswersLevel2 = newAdminSheet.getRange('G5:G');
+        let newAnswersLevel3 = newAdminSheet.getRange('K5:K');
         let newStudentLevel1 = newStudentSheet.getRange('C5:C');
         let newStudentLevel2 = newStudentSheet.getRange('G5:G');
         let newStudentLevel3 = newStudentSheet.getRange('K5:K');
-        let newRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
+        let newAdminRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
         let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
 
-        for (let i = 0; i < newRanges.length; i++) {
-          // let newSheetFormulas = newRanges[i].getFormulas();
-          let newSheetValues = newRanges[i].getValues();
+        for (let i = 0; i < newAdminRanges.length; i++) {
+          let newAdminSheetValues = newAdminRanges[i].getValues();
+          let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
 
-          for (let row = 0; row < newSheetValues.length; row++) {
-            if (newSheetValues[row][0] === 'not found') {
-              newSheetValues[row][0] = '';
+          for (let row = 0; row < newAdminSheetValues.length; row++) {
+            // set blank cells blank for student sheet
+            if (newAdminSheetValues[row][0] === 'not found') {
+              newAdminSheetValues[row][0] = '';
+            }
+            // save nonblank cells as values for admin sheet
+            else if (newAdminSheetValues[row][0] !== '') {
+              newAdminSheetFormulas[row][0] = newAdminSheetValues[row][0];
             }
           }
 
-          newStudentRanges[i].setValues(newSheetValues);
+          newStudentRanges[i].setValues(newAdminSheetValues);
+          newAdminRanges[i].setValues(newAdminSheetFormulas);
 
           let testScore = testScores.find(score => score.test === sheetName);
           if (testScore) {
-            newSheet.getRange('G1:I1').setValues(testScore.scores);
+            newAdminSheet.getRange('G1:I1').setValues(testScore.scores);
           }
         }
       }
@@ -721,18 +744,11 @@ function transferStudentData(oldSsId) {
     for (let row = 0; row < timestampValues.length; row ++) {
       let ssRow = row + 2;
       if (timestampValues[row][0] === '') {
-        Logger.log('blank row: ' + ssRow);
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
       }
     }
-    Logger.log(timestampValues);
     timestampRange.setValues(timestampValues);
     timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
-
-    let htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
-    .setWidth(250)
-    .setHeight(50);
-  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
   }
   catch (err) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
@@ -743,8 +759,13 @@ function transferStudentData(oldSsId) {
   // revert student ID and SS permissions
   newStudentData.getRange('A3').setValue(initialImportFunction);
   newStudentData.getRange('H3').setValue('');
-  DriveApp.getFileById(oldSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
   DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+
+  let htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
+    .setWidth(250)
+    .setHeight(50);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
 }
 
 function getLastFilledRow(sheet, col) {
