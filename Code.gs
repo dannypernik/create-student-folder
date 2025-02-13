@@ -206,6 +206,7 @@ function linkSheets(folderId, studentName='', prepType='all') {
   let folder = DriveApp.getFolderById(folderId);
   let files = folder.getFiles();
   let subFolders = DriveApp.getFolderById(folderId).getFolders();
+  const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
 
   while (files.hasNext()) {
     let file = files.next();
@@ -214,11 +215,14 @@ function linkSheets(folderId, studentName='', prepType='all') {
     if (fileName.includes('SAT') && prepType !== 'act') {
       if (fileName.toLowerCase().includes('student answer sheet')) {
         satSheetIds.student = fileId;
-        DriveApp.getFileById(satSheetIds.student).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+        let satStudentSheet = DriveApp.getFileById(satSheetIds.student);
+        satStudentSheet.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+        satStudentSheet.addEditor(SERVICE_ACCOUNT_EMAIL)
       }
       else if (fileName.toLowerCase().includes('answer analysis')) {
         satSheetIds.admin = fileId;
         let ss = SpreadsheetApp.openById(fileId);
+        DriveApp.getFileById(satSheetIds.admin).addEditor(SERVICE_ACCOUNT_EMAIL);
 
         for (i in ss.getSheets()) {
           let s = ss.getSheets()[i];
@@ -339,7 +343,13 @@ function createRevSheet(sub, subIndex) {
     let revDataSsId = revBackend.getRange('U3').getValue()
     let revDataSs = SpreadsheetApp.openById(revDataSsId);
     let revDataSheet = revDataSs.getSheetByName(studentName);
+    let studentSsId = ss.getSheetByName('Student responses').getRange('B1').getValue();
+    let studentSs = SpreadsheetApp.openById(studentSsId);
     let revSheetFolder, satFolder, studentFolder;
+
+    if (!revDataSheet) {
+      revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
+    }
 
     if (!revSubjectSortStart) {
       let ui = SpreadsheetApp.getUi();
@@ -438,6 +448,7 @@ function createRevSheet(sub, subIndex) {
         }
 
         revSubjectFolderIdCell.setValue(revSubjectFolderId);
+        studentSs.getSheetByName('Question bank data').getRange(5 + subIndex, 21).setValue(revSubjectFolderId);
       }
     }
     catch(err) {
@@ -447,13 +458,6 @@ function createRevSheet(sub, subIndex) {
       SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
       return;
     }
-
-    // if (!revKeySubjectFolderId) {
-    //   if (revSheetFolder === adminSubFolder) {
-
-    //   }
-    //   revKeySubjectFolderId = adminFolder.createFolder('Rev sheet answer keys')
-    // }
 
     revSheet.showSheet();
     revSheet.showRows(1, revSheet.getMaxRows());
@@ -472,7 +476,7 @@ function createRevSheet(sub, subIndex) {
     try {
       while (values[row - 1] && values[row - 1][0] != '') {
         var questionId = values[row - 1][0];
-        var rowHeight = heightVals[row - 1][0]; // rowHeights hard-coded in Rev sheet backend
+        var rowHeight = heightVals[row - 1][0] + subIndex * 100; // rowHeights hard-coded in Rev sheet backend + extra for Math
         revSheet.setRowHeight(row, rowHeight);
         Logger.log(questionId + ' rowHeight: ' + rowHeight);
         row++;
@@ -718,19 +722,6 @@ function transferStudentData(oldAdminSsId) {
         }
       }
     }
-
-    // set data to new student SS
-    // for (let s in answerSheets) {
-    //   let sheetName = answerSheets[s];
-    //   let newStudentSheet = newAdminSs.getSheetByName(sheetName);
-
-    //   if (newStudentSheet) {
-
-    //     for (let i = 0; i < newStudentRanges.length; i++) {
-          
-    //     }
-    //   }
-    // }
     
     // build timestamp column
     let newQbSheet = newAdminSs.getSheetByName('Question bank data');
