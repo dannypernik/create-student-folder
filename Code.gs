@@ -243,12 +243,11 @@ function linkSheets(folderId, studentName='', prepType='all') {
         let sName = s.getName();
         let answerSheets = getTestCodes(ss);
         answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
-        Logger.log(answerSheets);
 
         if (sName.toLowerCase().includes('analysis') || sName.toLowerCase().includes('opportunity')) {
           s.getRange('D4').setValue('for ' + studentName);
-        } else if (answerSheets.includes(sName)) {
-          Logger.log(sName);
+        }
+        else if (answerSheets.includes(sName)) {
           s.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
         }
       });
@@ -272,6 +271,15 @@ function linkSheets(folderId, studentName='', prepType='all') {
   while (subFolders.hasNext()) {
     var subFolder = subFolders.next();
     linkSheets(subFolder.getId(), studentName, prepType); // Added prepType to recursive call
+    if (prepType === 'all' && satSheetIds.student && satSheetIds.admin && actSheetIds.student && actSheetIds.admin) {
+      break;
+    }
+    else if (prepType === 'sat' && satSheetIds.student && satSheetIds.admin) {
+      break;
+    }
+    else if (prepType === 'act' && actSheetIds.student && actSheetIds.admin) {
+      break;
+    }
   }
 
   if (satSheetIds.student && satSheetIds.admin) {
@@ -283,7 +291,6 @@ function linkSheets(folderId, studentName='', prepType='all') {
     let revDataSheet = SpreadsheetApp.openById(revDataId);
 
     let studentRevDataSheet = revDataSheet.getSheetByName(studentName);
-    Logger.log('studentRevDataSheet: ' + studentRevDataSheet);
     if (!studentRevDataSheet) {
       try {
         studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
@@ -306,9 +313,6 @@ function linkSheets(folderId, studentName='', prepType='all') {
 
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
   }
-
-  Logger.log('actSheetIds.student: ' + actSheetIds.student);
-  Logger.log('actSheetIds.admin: ' + actSheetIds.admin);
 
   if (actSheetIds.student && actSheetIds.admin) {
     let actAdminSheet = SpreadsheetApp.openById(actSheetIds.admin);
