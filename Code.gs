@@ -336,19 +336,34 @@ function createMathRevSheet() {
 function createRevSheet(sub, subIndex) {
   try {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
+    let subBackendOffset = subIndex * 4;
+    let revResponseSheet = ss.getSheetByName('Rev sheets');
+    let revBackend = ss.getSheetByName('Rev sheet backend');
+    let revSubjectSortStart = revBackend.getRange(2, 1 + subBackendOffset).getValue();
+    let ui = SpreadsheetApp.getUi();
+
+    if (!revSubjectSortStart) {
+      ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
+      return;
+    }
+
+    let maxQuestionRange = revBackend.getRange('L2');
+    let prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
+    if (prompt.getSelectedButton() == ui.Button.CANCEL) {
+      return;
+    }
+    else if (prompt.getResponseText() !== '') {
+      maxQuestionRange.setValue(prompt.getResponseText());
+    }
+    
     let adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
     let revSheet = ss.getSheetByName(sub + ' Rev sheet');
-    let revResponseSheet = ss.getSheetByName('Rev sheets');
-    let subBackendOffset = subIndex * 4;
-    let revBackend = ss.getSheetByName('Rev sheet backend');
     let revSubjectFolderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
-    let revSubjectSortStart = revBackend.getRange(2, 1 + subBackendOffset).getValue();
     let revSubjectFolderId = revSubjectFolderIdCell.getValue();
     let revSheetFolderIdCell = revBackend.getRange('U2');
     let revSheetFolderId = revSheetFolderIdCell.getValue();
     let revKeyFolderCell = revBackend.getRange('U4');
     let revKeyFolderId = revKeyFolderCell.getValue();
-    let revKeyFolder = DriveApp.getFolderById(revKeyFolderId);
     let revKeySubjectFolderCell = revBackend.getRange(3, 3 + subBackendOffset);
     let revKeySubjectFolderId = revKeySubjectFolderCell.getValue();
     let studentName = revBackend.getRange('K2').getValue();
@@ -357,7 +372,7 @@ function createRevSheet(sub, subIndex) {
     let revDataSheet = revDataSs.getSheetByName(studentName);
     let studentSsId = ss.getSheetByName('Student responses').getRange('B1').getValue();
     let studentSs = SpreadsheetApp.openById(studentSsId);
-    let revSheetFolder, satFolder, studentFolder, subject;
+    let revSheetFolder, revKeyFolder, satFolder, studentFolder, subject;
 
     if (sub === 'RW') {
       subject = 'Reading & Writing';
@@ -365,23 +380,10 @@ function createRevSheet(sub, subIndex) {
       subject = 'Math';
     }
 
+    Logger.log('variables set');
+
     if (!revDataSheet) {
-      revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
-    }
-
-    if (!revSubjectSortStart) {
-      let ui = SpreadsheetApp.getUi();
-      ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
-      return;
-    }
-
-    let maxQuestionRange = revBackend.getRange('L2');
-    let ui = SpreadsheetApp.getUi();
-    let prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
-    if (prompt.getSelectedButton() == ui.Button.CANCEL) {
-      return;
-    } else if (prompt.getResponseText() !== '') {
-      maxQuestionRange.setValue(prompt.getResponseText());
+      revDataSheet = revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
     }
 
     try {
@@ -401,6 +403,8 @@ function createRevSheet(sub, subIndex) {
       revSubjectFolderId = '';
       revSubjectFolderIdCell.setValue(revSubjectFolderId);
     }
+
+    Logger.log('ids set');
 
     try {
       if (!revSubjectFolderId) {
@@ -461,6 +465,8 @@ function createRevSheet(sub, subIndex) {
       return;
     }
 
+    Logger.log('Rev folder logic complete');
+
     revSheet.showSheet();
     revSheet.showRows(1, revSheet.getMaxRows());
     revBackend.getRange(2, 2 + subBackendOffset, revBackend.getLastRow() - 1).clear();
@@ -474,6 +480,8 @@ function createRevSheet(sub, subIndex) {
     var heightVals = heights.getValues();
     //var imgContainerWidth = revSheet.getColumnWidth(4);
     var row = 6;
+
+    Logger.log('starting rowHeights');
 
     try {
       while (values[row - 1] && values[row - 1][0] != '') {
@@ -494,18 +502,19 @@ function createRevSheet(sub, subIndex) {
 
     let revDataLastQuestionCell, revDataLastQuestion, newRevSheetNumber;
     let revDataSubjectColumn = 2 + subIndex * 3;
-    let revResponseSubjectColumn = 2 + subIndex * 7;
-    let firstEmptyRow = getFirstEmptyRow(revDataSheet, revDataSubjectColumn);
-    let lastAnsweredQuestionRow = getFirstEmptyRow(revResponseSheet, revResponseSubjectColumn) - 1;
+    let revResponseSubjectColumn = 4 + subIndex * 5;
+    let lastFilledQuestionRow = getLastFilledRow(revDataSheet, revDataSubjectColumn);
+    let lastFilledResponseRow = getLastFilledRow(revResponseSheet, revResponseSubjectColumn);
 
-    if (firstEmptyRow === 5) {
+    if (lastFilledQuestionRow === 4) {
       newRevSheetNumber = 1;
-    } else {
-      revDataLastQuestionCell = revDataSheet.getRange(firstEmptyRow - 1, revDataSubjectColumn)
+    }
+    else {
+      revDataLastQuestionCell = revDataSheet.getRange(lastFilledQuestionRow, revDataSubjectColumn)
       revDataLastQuestion =  revDataLastQuestionCell.getValue().toString();
       Logger.log('revDataLastQuestion' + revDataLastQuestion);
       newRevSheetNumber = parseInt(revDataLastQuestion.substring(revDataLastQuestion.lastIndexOf(' ') + 1, revDataLastQuestion.indexOf('.'))) + 1;
-      revResponseSheet.getRange(5, revResponseSubjectColumn, lastAnsweredQuestionRow - 4).copyTo(revResponseSheet.getRange(5, revResponseSubjectColumn), {contentsOnly: true});
+      revResponseSheet.getRange(4, revResponseSubjectColumn, lastFilledResponseRow - 3).copyTo(revResponseSheet.getRange(4, revResponseSubjectColumn), {contentsOnly: true});
     }
     revSheet.getRange('E1').setValue(newRevSheetNumber);
 
@@ -528,14 +537,14 @@ function createRevSheet(sub, subIndex) {
     //*/
 
     try {
-      DriveApp.getFolderById(revKeyFolderId);
+      revKeyFolder = DriveApp.getFolderById(revKeyFolderId);
     }
     catch {
       Logger.log('Key folder ID ' + revKeyFolderId + ' not found');
       revKeyFolder = adminFolder.createFolder('Rev keys');
       revKeyFolderCell.setValue(revKeyFolder.getId());
       revKeySubjectFolderId = revKeyFolder.createFolder(subject).getId();
-      revSubjectFolderIdCell.setValue(revKeySubjectFolderId);
+      revKeySubjectFolderCell.setValue(revKeySubjectFolderId);
     }
 
     try {
@@ -558,7 +567,7 @@ function createRevSheet(sub, subIndex) {
     //*/
 
     var dataToCopy = revSheet.getRange(6, 1, row - 5, 2).getValues();
-    revDataSheet.getRange(firstEmptyRow, revDataSubjectColumn, row - 5, 2).setValues(dataToCopy);
+    revDataSheet.getRange(lastFilledQuestionRow + 1, revDataSubjectColumn, row - 5, 2).setValues(dataToCopy);
 
     revSheet.showRows(1, revSheet.getMaxRows());
     revSheet.hideSheet();
@@ -682,6 +691,22 @@ function transferStudentData(oldAdminSsId) {
       // temporarily set old admin data imports
       newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
       newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
+
+      // Copy rev data if necessary
+      // issue: currently, unfilled rev answers get autofilled by old data before pasting values.
+      // issue: new hard-coded values may not match old question codes
+      // if (oldAdminSs.getSheetByName('Rev sheets')) {
+      //   let oldRevBackend = oldAdminSs.getSheetByName('Rev sheet backend');
+      //   let oldRevDataId = oldRevBackend.getRange('U3').getValue();
+      //   let oldStudentName = oldRevBackend.getRange('K2').getValue();
+      //   let oldRevDataStudentSheet = SpreadsheetApp.openById(oldRevDataId).getSheetByName(oldStudentName);
+      //   let oldStudentRevData = oldRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).getValues();
+      //   let newRevBackend = newAdminSs.getSheetByName('Rev sheet backend');
+      //   let newRevDataId = newRevBackend.getRange('U3').getValue();
+      //   let newStudentName = newRevBackend.getRange('K2').getValue();
+      //   let newRevDataStudentSheet = SpreadsheetApp.openById(newRevDataId).getSheetByName(newStudentName);
+      //   newRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).setValues(oldStudentRevData);
+      // }
     }
 
     let answerSheets = getTestCodes(oldAdminSs);
@@ -708,12 +733,26 @@ function transferStudentData(oldAdminSsId) {
 
       if (newAdminSheet) {
         Logger.log('Transferring answers for ' + newAdminSheet.getName());
-        let newAnswersLevel1 = newAdminSheet.getRange('C5:C');
-        let newAnswersLevel2 = newAdminSheet.getRange('G5:G');
-        let newAnswersLevel3 = newAdminSheet.getRange('K5:K');
-        let newStudentLevel1 = newStudentSheet.getRange('C5:C');
-        let newStudentLevel2 = newStudentSheet.getRange('G5:G');
-        let newStudentLevel3 = newStudentSheet.getRange('K5:K');
+        let newAnswersLevel1, newAnswersLevel2, newAnswersLevel3;
+        let newStudentLevel1, newStudentLevel2, newStudentLevel3;
+
+        if (sheetName === 'Rev sheets') {
+          newAnswersLevel1 = newAdminSheet.getRange('D5:D');
+          newAnswersLevel2 = newAdminSheet.getRange('I5:I');
+          newStudentLevel1 = newStudentSheet.getRange('D5:D');
+          newStudentLevel2 = newStudentSheet.getRange('I5:I');
+        }
+        else {
+          newAnswersLevel1 = newAdminSheet.getRange('C5:C');
+          newAnswersLevel2 = newAdminSheet.getRange('G5:G');
+          newStudentLevel1 = newStudentSheet.getRange('C5:C');
+          newStudentLevel2 = newStudentSheet.getRange('G5:G');
+          if (sheetName !== 'SLT Uniques') {
+            newAnswersLevel3 = newAdminSheet.getRange('K5:K');
+            newStudentLevel3 = newStudentSheet.getRange('K5:K');
+          }
+        }
+
         let newAdminRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
         let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
 
@@ -765,6 +804,7 @@ function transferStudentData(oldAdminSsId) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
       .setWidth(400)
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
+    Logger.log(err.stack);
   }
 
   // revert student ID and SS permissions
@@ -779,14 +819,6 @@ function transferStudentData(oldAdminSsId) {
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
 }
 
-function getLastFilledRow(sheet, col) {
-  const lastRow = sheet.getLastRow();
-  const allVals = sheet.getRange(1, col, lastRow).getValues();
-  const lastFilledRow = lastRow - allVals.reverse().findIndex((c) => c[0] != '');
-
-  return lastFilledRow;
-}
-
 function getTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
@@ -797,6 +829,14 @@ function getTestCodes() {
   const testCodes = testCodeCol.filter((x, i, a) => a.indexOf(x) == i);
 
   return testCodes;
+}
+
+function getLastFilledRow(sheet, col) {
+  const lastRow = sheet.getLastRow();
+  const allVals = sheet.getRange(1, col, lastRow).getValues();
+  const lastFilledRow = lastRow - allVals.reverse().findIndex((c) => c[0] != '');
+
+  return lastFilledRow;
 }
 
 // Adapted from https://stackoverflow.com/a/9102463/1677912
