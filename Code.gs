@@ -244,17 +244,13 @@ function linkSheets(folderId, studentName='', prepType='all') {
         let answerSheets = getTestCodes(ss);
         answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
-        if (sName.toLowerCase().includes('analysis') || sName.toLowerCase().includes('opportunity')) {
-          s.getRange('D4').setValue('for ' + studentName);
-        }
-        else if (answerSheets.includes(sName)) {
+        if (answerSheets.includes(sName)) {
           s.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
         }
       });
 
       let revBackend = ss.getSheetByName('Rev sheet backend');
       revBackend.getRange('K2').setValue(studentName);
-      revBackend.protect().setWarningOnly(true);
     }
   });
 
@@ -265,6 +261,8 @@ function linkSheets(folderId, studentName='', prepType='all') {
       actStudentSheet.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
     } else if (fileName.toLowerCase().includes('answer analysis')) {
       actSheetIds.admin = fileId;
+      const ss = SpreadsheetApp.openById(fileId);
+      ss.getSheetByName('Student responses').getRange('G1').setValue(studentName);
     }
   });
 
