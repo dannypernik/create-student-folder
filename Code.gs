@@ -334,18 +334,10 @@ function createMathRevSheet() {
 function createRevSheet(sub, subIndex) {
   try {
     let ss = SpreadsheetApp.getActiveSpreadsheet();
-    let subBackendOffset = subIndex * 4;
-    let revResponseSheet = ss.getSheetByName('Rev sheets');
     let revBackend = ss.getSheetByName('Rev sheet backend');
-    let revSubjectSortStart = revBackend.getRange(2, 1 + subBackendOffset).getValue();
+    let maxQuestionRange = revBackend.getRange('L2');
     let ui = SpreadsheetApp.getUi();
 
-    if (!revSubjectSortStart) {
-      ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
-      return;
-    }
-
-    let maxQuestionRange = revBackend.getRange('L2');
     let prompt = ui.prompt('Max # of questions - leave blank to use prior value of ' + maxQuestionRange.getValue(), ui.ButtonSet.OK_CANCEL);
     if (prompt.getSelectedButton() == ui.Button.CANCEL) {
       return;
@@ -354,6 +346,15 @@ function createRevSheet(sub, subIndex) {
       maxQuestionRange.setValue(prompt.getResponseText());
     }
     
+    let subBackendOffset = subIndex * 4;
+    let revSubjectSortStart = revBackend.getRange(2, 1 + subBackendOffset).getValue();
+    let revResponseSheet = ss.getSheetByName('Rev sheets');
+
+    if (!revSubjectSortStart) {
+      ui.alert('Error: No missed questions available for ' + revResponseSheet.getRange(1, 3 + subIndex * 5).getValue());
+      return;
+    }
+
     let adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
     let revSheet = ss.getSheetByName(sub + ' Rev sheet');
     let revSubjectFolderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
