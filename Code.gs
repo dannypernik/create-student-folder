@@ -726,8 +726,6 @@ function transferStudentData(oldAdminSsId, startTime) {
 
     let allNewAdminSheetValues = [];
     let allNewStudentSheetValues = [];
-    let allNewAdminRanges = [];
-    let allNewStudentRanges = [];
 
     for (let s in answerSheets) {
 
@@ -821,6 +819,16 @@ function transferStudentData(oldAdminSsId, startTime) {
     }
     timestampRange.setValues(timestampValues);
     timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
+
+    // build reviewed column
+    newStudentData.getRange('L3').setValue('=importrange("' + oldAdminSsId + '", "Practice test data!E1:M")');
+    const newPracticeDataSheet = newAdminSs.getSheetByName('Practice test data');
+    const reviewedLookup = '=xlookup(E2, \'Student responses\'!$L$4:$L$10000, \'Student responses\'!$T$4:$T$10000,"")';
+    const reviewedStartCell = newPracticeDataSheet.getRange('M2');
+    reviewedStartCell.setValue(reviewedLookup);
+    let reviewedRange = newPracticeDataSheet.getRange('M2:M10000');
+    reviewedStartCell.autoFill(reviewedRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
+    reviewedRange.setValues(reviewedRange.getValues());
   }
   catch (err) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
@@ -832,6 +840,7 @@ function transferStudentData(oldAdminSsId, startTime) {
   // revert student ID and SS permissions
   newStudentData.getRange('A3').setValue(initialImportFunction);
   newStudentData.getRange('H3').setValue('');
+  newStudentData.getRange('T3').setValue('');
   DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
   DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
 
