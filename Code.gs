@@ -940,6 +940,8 @@ function transferStudentData(oldAdminSsId, startTime) {
     let timestampValues = timestampRange.getValues();
 
     for (let row = 0; row < timestampValues.length; row ++) {
+      const currentTime = new Date().getTime();
+      Logger.log("Current time at row " + row + ": "  + currentTime);
       let ssRow = row + 2;
       if (timestampValues[row][0] === '') {
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
