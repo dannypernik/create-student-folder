@@ -650,7 +650,8 @@ function transferOldStudentData() {
     return;
   }
 
-  let htmlOutput = HtmlService.createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the spreadsheet by clicking File > Version history > See version history</p>')
+  let htmlOutput = HtmlService
+      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the spreadsheet by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
       .setWidth(400)
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
 
@@ -667,137 +668,6 @@ function transferOldStudentData() {
 
   transferStudentData(oldAdminSsId, startTime);
 }
-
-// function transferStudentData(oldAdminSsId) {
-//   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
-//   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
-//   const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
-
-//   // temporarily relax permissions
-//   const oldAdminFile = DriveApp.getFileById(oldAdminSsId);
-//   const newStudentFile = DriveApp.getFileById(newStudentSsId);
-//   oldAdminFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-//   newStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
-
-//   let oldAdminSs, newStudentData, initialImportFunction;
-//   try {
-//     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-//     newStudentData = newAdminSs.getSheetByName('Student responses');
-//     initialImportFunction = newStudentData.getRange('A3').getFormula();
-
-//     if (oldAdminSsId !== newAdminSs.getId()) {
-//       // temporarily set old admin data imports
-//       newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
-//       newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
-//     }
-
-//     let answerSheets = getTestCodes(oldAdminSs);
-//     let testScores = [];
-
-//     // Cache test scores to avoid repeated lookups
-//     answerSheets.forEach(sheetName => {
-//       let oldSheet = oldAdminSs.getSheetByName(sheetName);
-//       if (oldSheet) {
-//         let subScore = oldSheet.getRange('G1:I1').getValues();
-//         testScores.push({ 'test': sheetName, 'scores': subScore });
-//       }
-//     });
-
-//     answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
-
-//     answerSheets.forEach(sheetName => {
-//       let newAdminSheet = newAdminSs.getSheetByName(sheetName);
-//       let newStudentSheet = newStudentSs.getSheetByName(sheetName);
-
-//       if (newAdminSheet) {
-//         Logger.log('Transferring answers for ' + newAdminSheet.getName());
-
-//         let newAnswersLevel1, newAnswersLevel2, newAnswersLevel3;
-//         let newStudentLevel1, newStudentLevel2, newStudentLevel3;
-
-//         if (sheetName === 'Rev sheets') {
-//           newAnswersLevel1 = newAdminSheet.getRange('D5:D');
-//           newAnswersLevel2 = newAdminSheet.getRange('I5:I');
-//           newStudentLevel1 = newStudentSheet.getRange('D5:D');
-//           newStudentLevel2 = newStudentSheet.getRange('I5:I');
-//         } else {
-//           newAnswersLevel1 = newAdminSheet.getRange('C5:C');
-//           newAnswersLevel2 = newAdminSheet.getRange('G5:G');
-//           newStudentLevel1 = newStudentSheet.getRange('C5:C');
-//           newStudentLevel2 = newStudentSheet.getRange('G5:G');
-//           if (sheetName !== 'SLT Uniques') {
-//             newAnswersLevel3 = newAdminSheet.getRange('K5:K');
-//             newStudentLevel3 = newStudentSheet.getRange('K5:K');
-//           }
-//         }
-
-//         let newAdminRanges = [newAnswersLevel1, newAnswersLevel2, newAnswersLevel3];
-//         let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
-
-//         for (let i = 0; i < newAdminRanges.length; i++) {
-//           if (newAdminRanges[i]) {
-//             let newAdminSheetValues = newAdminRanges[i].getValues();
-//             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
-
-//             for (let row = 0; row < newAdminSheetValues.length; row++) {
-//               // set blank cells blank for student sheet
-//               if (newAdminSheetValues[row][0] === 'not found') {
-//                 newAdminSheetValues[row][0] = '';
-//               }
-//               // save nonblank cells as values for admin sheet
-//               else if (newAdminSheetValues[row][0] !== '') {
-//                 newAdminSheetFormulas[row][0] = newAdminSheetValues[row][0];
-//               }
-//             }
-
-//             newStudentRanges[i].setValues(newAdminSheetValues);
-//             newAdminRanges[i].setValues(newAdminSheetFormulas);
-//           }
-//         }
-
-//         // Set test scores
-//         let testScore = testScores.find(score => score.test === sheetName);
-//         if (testScore) {
-//           newAdminSheet.getRange('G1:I1').setValues(testScore.scores);
-//         }
-//       }
-//     });
-
-//     // Build timestamp column
-//     let newQbSheet = newAdminSs.getSheetByName('Question bank data');
-//     let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
-//     let timestampStartCell = newQbSheet.getRange('K2');
-//     timestampStartCell.setValue(timestampLookup);
-//     let timestampRange = newQbSheet.getRange('K2:K10000');
-//     timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
-//     let timestampValues = timestampRange.getValues();
-
-//     for (let row = 0; row < timestampValues.length; row++) {
-//       let ssRow = row + 2;
-//       if (timestampValues[row][0] === '') {
-//         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))';
-//       }
-//     }
-//     timestampRange.setValues(timestampValues);
-//     timestampRange.setNumberFormat('MM/dd/yyyy h:mm:ss');
-//   } catch (err) {
-//     Logger.log(err.stack);
-//     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
-//       .setWidth(400);
-//     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
-//   }
-
-//   // Revert student ID and SS permissions
-//   newStudentData.getRange('A3').setValue(initialImportFunction);
-//   newStudentData.getRange('H3').setValue('');
-//   oldAdminFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
-//   newStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-
-//   let htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
-//     .setWidth(250)
-//     .setHeight(50);
-//   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
-// }
 
 function transferStudentData(oldAdminSsId, startTime) {
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
