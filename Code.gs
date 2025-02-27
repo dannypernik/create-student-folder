@@ -854,12 +854,12 @@ function transferStudentData(oldAdminSsId, startTime) {
 
     answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
+    let allNewAdminSheetValues = [];
+    let allNewStudentSheetValues = [];
+    let allNewAdminRanges = [];
+    let allNewStudentRanges = [];
+
     for (let s in answerSheets) {
-      const currentTime = new Date().getTime();
-      if (currentTime - startTime > maxDuration) {
-        Logger.log("Exiting loop after 5 minutes and 30 seconds.");
-        throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Please revert to previous version of this spreadsheet by clicking File > Version history > See versions.");
-      }
 
       let sheetName = answerSheets[s];
       let newAdminSheet = newAdminSs.getSheetByName(sheetName);
@@ -891,8 +891,14 @@ function transferStudentData(oldAdminSsId, startTime) {
         let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
 
         for (let i = 0; i < newAdminRanges.length; i++) {
+          const currentTime = new Date().getTime();
+          if (currentTime - startTime > maxDuration) {
+            Logger.log("Exiting loop after 5 minutes and 30 seconds.");
+            throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Please revert to previous version of this spreadsheet by clicking File > Version history > See versions.");
+          }
           let newAdminSheetValues = newAdminRanges[i].getValues();
           let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
+          let newStudentSheetValues = [];
 
           for (let row = 0; row < newAdminSheetValues.length; row++) {
             // set blank cells blank for student sheet
@@ -903,18 +909,26 @@ function transferStudentData(oldAdminSsId, startTime) {
             else if (newAdminSheetValues[row][0] !== '') {
               newAdminSheetFormulas[row][0] = newAdminSheetValues[row][0];
             }
-          }
 
-          newStudentRanges[i].setValues(newAdminSheetValues);
-          newAdminRanges[i].setValues(newAdminSheetFormulas);
-
-          let testScore = testScores.find(score => score.test === sheetName);
-          if (testScore) {
-            newAdminSheet.getRange('G1:I1').setValues(testScore.scores);
+            newStudentSheetValues.push(newAdminSheetValues[row]);
           }
+          // Ensure the number of rows in the source and destination ranges match
+          if (newStudentSheetValues.length === newStudentRanges[i].getNumRows()) {
+            allNewAdminSheetValues.push({ range: newAdminRanges[i], values: newAdminSheetFormulas });
+            allNewStudentSheetValues.push({ range: newStudentRanges[i], values: newStudentSheetValues });
+          } else {
+            throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
+          }
+        }
+        let testScore = testScores.find(score => score.test === sheetName);
+        if (testScore) {
+          newAdminSheet.getRange('G1:I1').setValues(testScore.scores);
         }
       }
     }
+
+    allNewAdminSheetValues.forEach(item => item.range.setValues(item.values));
+    allNewStudentSheetValues.forEach(item => item.range.setValues(item.values));
 
     // build timestamp column
     let newQbSheet = newAdminSs.getSheetByName('Question bank data');
