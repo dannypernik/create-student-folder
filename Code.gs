@@ -891,33 +891,35 @@ function transferStudentData(oldAdminSsId, startTime) {
         let newStudentRanges = [newStudentLevel1, newStudentLevel2, newStudentLevel3];
 
         for (let i = 0; i < newAdminRanges.length; i++) {
-          const currentTime = new Date().getTime();
-          if (currentTime - startTime > maxDuration) {
-            Logger.log("Exiting loop after 5 minutes and 30 seconds.");
-            throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Please revert to previous version of this spreadsheet by clicking File > Version history > See versions.");
-          }
-          let newAdminSheetValues = newAdminRanges[i].getValues();
-          let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
-          let newStudentSheetValues = [];
-
-          for (let row = 0; row < newAdminSheetValues.length; row++) {
-            // set blank cells blank for student sheet
-            if (newAdminSheetValues[row][0] === 'not found') {
-              newAdminSheetValues[row][0] = '';
+          if (newAdminRanges[i] && newStudentRanges[i]) {
+            const currentTime = new Date().getTime();
+            if (currentTime - startTime > maxDuration) {
+              Logger.log("Exiting loop after 5 minutes and 30 seconds.");
+              throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Please revert to previous version of this spreadsheet by clicking File > Version history > See versions.");
             }
-            // save nonblank cells as values for admin sheet
-            else if (newAdminSheetValues[row][0] !== '') {
-              newAdminSheetFormulas[row][0] = newAdminSheetValues[row][0];
-            }
+            let newAdminSheetValues = newAdminRanges[i].getValues();
+            let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
+            let newStudentSheetValues = [];
 
-            newStudentSheetValues.push(newAdminSheetValues[row]);
-          }
-          // Ensure the number of rows in the source and destination ranges match
-          if (newStudentSheetValues.length === newStudentRanges[i].getNumRows()) {
-            allNewAdminSheetValues.push({ range: newAdminRanges[i], values: newAdminSheetFormulas });
-            allNewStudentSheetValues.push({ range: newStudentRanges[i], values: newStudentSheetValues });
-          } else {
-            throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
+            for (let row = 0; row < newAdminSheetValues.length; row++) {
+              // set blank cells blank for student sheet
+              if (newAdminSheetValues[row][0] === 'not found') {
+                newAdminSheetValues[row][0] = '';
+              }
+              // save nonblank cells as values for admin sheet
+              else if (newAdminSheetValues[row][0] !== '') {
+                newAdminSheetFormulas[row][0] = newAdminSheetValues[row][0];
+              }
+
+              newStudentSheetValues.push(newAdminSheetValues[row]);
+            }
+            // Ensure the number of rows in the source and destination ranges match
+            if (newStudentSheetValues.length === newStudentRanges[i].getNumRows()) {
+              allNewAdminSheetValues.push({ range: newAdminRanges[i], values: newAdminSheetFormulas });
+              allNewStudentSheetValues.push({ range: newStudentRanges[i], values: newStudentSheetValues });
+            } else {
+              throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
+            }
           }
         }
         let testScore = testScores.find(score => score.test === sheetName);
