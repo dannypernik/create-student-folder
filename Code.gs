@@ -485,7 +485,7 @@ function createRevSheet(sub, subIndex) {
     try {
       while (values[row - 1] && values[row - 1][0] != '') {
         var questionId = values[row - 1][0];
-        var rowHeight = heightVals[row - 1][0] + subIndex * 100; // rowHeights hard-coded in Rev sheet backend + extra for Math
+        var rowHeight = heightVals[row - 1][0]; // rowHeights including whitespace hard-coded in Rev sheet backend
         revSheet.setRowHeight(row, rowHeight);
         Logger.log(questionId + ' rowHeight: ' + rowHeight);
         row++;
