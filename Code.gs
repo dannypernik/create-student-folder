@@ -651,8 +651,9 @@ function transferOldStudentData() {
   }
 
   let htmlOutput = HtmlService
-      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the spreadsheet by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
+      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the admin AND student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
       .setWidth(400)
+      .setHeight(100);
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
 
   let oldAdminSsId;
