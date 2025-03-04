@@ -294,7 +294,7 @@ function linkSheets(folderId, studentName='', prepType='all') {
         studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
       } catch (err) {
         let ui = SpreadsheetApp.getUi();
-        let continueScript = ui.prompt('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
+        let continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
 
         if (continueScript === ui.Button.NO) {
           let htmlOutput = HtmlService.createHtmlOutput('<p>Please use a unique name for the new student or delete/rename the "'+ studentName + '" sheet from your <a href="https://docs.google.com/spreadsheets/d/' + revDataId + '">Rev sheet data</a></p>')
@@ -651,9 +651,9 @@ function transferOldStudentData() {
   }
 
   let htmlOutput = HtmlService
-      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the admin AND student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
+      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the new admin AND new student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
       .setWidth(400)
-      .setHeight(100);
+      .setHeight(150);
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
 
   let oldAdminSsId;
@@ -685,27 +685,87 @@ function transferStudentData(oldAdminSsId, startTime) {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
     newStudentData = newAdminSs.getSheetByName('Student responses');
     initialImportFunction = newStudentData.getRange('A3').getFormula();
+    const oldRevSheet = oldAdminSs.getSheetByName('Rev sheets');
+    const newRevSheet = newAdminSs.getSheetByName('Rev sheets');
 
-    if (oldAdminSsId !== newAdminSs.getId()) {
-      // temporarily set old admin data imports
-      newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
-      newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
+    if (oldRevSheet) {
+      if (oldAdminSsId !== newAdminSs.getId()) {
+        // temporarily set old admin data imports
+        newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
+        newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
 
-      // Copy rev data if necessary
-      // issue: currently, unfilled rev answers get autofilled by old data before pasting values.
-      // issue: new hard-coded values may not match old question codes
-      // if (oldAdminSs.getSheetByName('Rev sheets')) {
-      //   let oldRevBackend = oldAdminSs.getSheetByName('Rev sheet backend');
-      //   let oldRevDataId = oldRevBackend.getRange('U3').getValue();
-      //   let oldStudentName = oldRevBackend.getRange('K2').getValue();
-      //   let oldRevDataStudentSheet = SpreadsheetApp.openById(oldRevDataId).getSheetByName(oldStudentName);
-      //   let oldStudentRevData = oldRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).getValues();
-      //   let newRevBackend = newAdminSs.getSheetByName('Rev sheet backend');
-      //   let newRevDataId = newRevBackend.getRange('U3').getValue();
-      //   let newStudentName = newRevBackend.getRange('K2').getValue();
-      //   let newRevDataStudentSheet = SpreadsheetApp.openById(newRevDataId).getSheetByName(newStudentName);
-      //   newRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).setValues(oldStudentRevData);
-      // }
+        let oldRevBackend = oldAdminSs.getSheetByName('Rev sheet backend');
+        let oldRevDataId = oldRevBackend.getRange('U3').getValue();
+        let oldStudentName = oldRevBackend.getRange('K2').getValue();
+        let oldRevSs = SpreadsheetApp.openById(oldRevDataId)
+        let oldRevDataStudentSheet = oldRevSs.getSheetByName(oldStudentName);
+        let oldStudentRevData = oldRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).getValues();
+        let newRevBackend = newAdminSs.getSheetByName('Rev sheet backend');
+        let newRevDataCell = newRevBackend.getRange('U3');
+        let newRevDataId = newRevDataCell.getValue();
+        let newStudentName = newRevBackend.getRange('K2').getValue();
+        let newRevDataStudentSheet = SpreadsheetApp.openById(newRevDataId).getSheetByName(newStudentName);
+        let rwRevSheetNumber = newAdminSs.getSheetByName('RW Rev sheet').getRange('E1').getValue();
+        let mathRevSheetNumber = newAdminSs.getSheetByName('Math Rev sheet').getRange('E1').getValue();
+        
+
+        if ((oldRevDataId !== newRevDataId) && rwRevSheetNumber == 0 && mathRevSheetNumber == 0 && newRevDataCell && oldRevSs) {
+          let ui = SpreadsheetApp.getUi();
+          let prompt = ui.alert('Older and newer spreadsheet versions have different Rev Data spreadsheets. If Rev sheets were created using the older version, it is recommended that you use the older version of Rev Data. Would you like to connect the new student to the old Rev Data sheet?', ui.ButtonSet.YES_NO);
+
+          if(prompt === ui.Button.YES) {
+            const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
+            const newStudentRevDataCell = newStudentSs.getSheetByName('Question bank data').getRange('U3');
+
+            if (newStudentRevDataCell) {
+              newRevDataCell.setValue(oldRevDataId);
+              newStudentRevDataCell.setValue(oldRevDataId);
+              let htmlOutput = HtmlService
+                .createHtmlOutput('<p></p><button onclick="google.script.host.close()">OK</button>')
+                .setWidth(400)
+                .setHeight(150);
+              SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev Data sheet updated');
+            }
+            else {
+              let htmlOutput = HtmlService
+                .createHtmlOutput('<p></p><button onclick="google.script.host.close()">OK</button>')
+                .setWidth(400)
+                .setHeight(150);
+              SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev Data sheet could not be updated');
+            }
+
+          }
+          else {
+            newRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).setValues(oldStudentRevData);
+          }
+        }
+        else {
+          newRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).setValues(oldStudentRevData);
+        }
+      }
+
+      const oldRwRevResponseRange = oldRevSheet.getRange(4, 4, getLastFilledRow(oldRevSheet, 4));
+      const oldMathRevResponseRange = oldRevSheet.getRange(4, 9, getLastFilledRow(oldRevSheet, 9));
+      const oldRwRevResponseValues = oldRwRevResponseRange.getValues();
+      const oldRwRevResponseFormulas = oldRwRevResponseRange.getFormulas();
+      const oldMathRevResponseValues = oldMathRevResponseRange.getValues();
+      const oldMathRevResponseFormulas = oldMathRevResponseRange.getFormulas();
+
+      for (let i = 0; i < oldRwRevResponseValues.length; i++) {
+        if (oldRwRevResponseValues[i][0] === '') {
+          oldRwRevResponseValues[i] = oldRwRevResponseFormulas[i];
+        }
+      }
+
+      for (let i = 0; i < oldMathRevResponseValues.length; i++) {
+        if (oldMathRevResponseValues[i][0] === '') {
+            oldMathRevResponseValues[i] = oldMathRevResponseFormulas[i];
+  
+        }
+      }
+
+      newRevSheet.getRange(4, 4, oldRwRevResponseValues.length).setValues(oldRwRevResponseValues);
+      newRevSheet.getRange(4, 9, oldMathRevResponseValues.length).setValues(oldMathRevResponseValues);
     }
 
     let answerSheets = getTestCodes(oldAdminSs);
@@ -764,7 +824,7 @@ function transferStudentData(oldAdminSsId, startTime) {
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
               Logger.log("Exiting loop after 5 minutes and 30 seconds.");
-              throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Please revert to previous version of this spreadsheet by clicking File > Version history > See versions.");
+              throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Cleaning up.");
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
@@ -806,13 +866,11 @@ function transferStudentData(oldAdminSsId, startTime) {
     let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
     let timestampStartCell = newQbSheet.getRange('K2');
     timestampStartCell.setValue(timestampLookup);
-    let timestampRange = newQbSheet.getRange('K2:K10000');
+    let timestampRange = newQbSheet.getRange(2, 11, getLastFilledRow(newQbSheet, 11));
     timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     let timestampValues = timestampRange.getValues();
 
     for (let row = 0; row < timestampValues.length; row ++) {
-      const currentTime = new Date().getTime();
-      Logger.log("Current time at row " + row + ": "  + currentTime);
       let ssRow = row + 2;
       if (timestampValues[row][0] === '') {
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
