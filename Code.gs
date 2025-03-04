@@ -885,6 +885,11 @@ function transferStudentData(oldAdminSsId, startTime) {
     const reviewedLookup = '=xlookup(E2, \'Student responses\'!$L$4:$L$10000, \'Student responses\'!$T$4:$T$10000,"")';
     const reviewedStartCell = newPracticeDataSheet.getRange('M2');
     reviewedStartCell.setValue(reviewedLookup);
+    const filter = newPracticeDataSheet.getFilter();
+    if(filter) {
+      filter.remove();
+    }
+    newPracticeDataSheet.getRange(1, 1, newPracticeDataSheet.getMaxRows(), 13).createFilter();
     let reviewedRange = newPracticeDataSheet.getRange('M2:M10000');
     reviewedStartCell.autoFill(reviewedRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     reviewedRange.setValues(reviewedRange.getValues());
