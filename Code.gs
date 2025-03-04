@@ -143,18 +143,20 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       fileOperations.push({ file: newFile, action: 'move' });
       Logger.log('new location for ' + newFileName + ': ' + newFile.getParents().next().getId());
       if (isEmptyFolder(newFolder.getId())) {
-        newFolder.setTrashed(true);
-        Logger.log(newFolderName + ' trashed');
+      fileOperations.push({ folder: newFolder, action: 'trash' });
+      Logger.log(newFolderName + ' added to trash operations');
       }
     }
-  }
-
-  // Perform file operations in batch
-  fileOperations.forEach(op => {
-    if (op.action === 'move') {
-      op.file.moveTo(newFolder.getParents().next());
     }
-  });
+
+    // Perform file operations in batch
+    fileOperations.forEach(op => {
+      if (op.action === 'move') {
+        op.file.moveTo(newFolder.getParents().next());
+      } else if (op.action === 'trash') {
+        op.folder.setTrashed(true);
+      }
+    });
 
   while (sourceSubFolders.hasNext()) {
     var sourceSubFolder = sourceSubFolders.next();
@@ -707,7 +709,7 @@ function transferStudentData(oldAdminSsId, startTime) {
         let newRevDataStudentSheet = SpreadsheetApp.openById(newRevDataId).getSheetByName(newStudentName);
         let rwRevSheetNumber = newAdminSs.getSheetByName('RW Rev sheet').getRange('E1').getValue();
         let mathRevSheetNumber = newAdminSs.getSheetByName('Math Rev sheet').getRange('E1').getValue();
-        
+
 
         if ((oldRevDataId !== newRevDataId) && rwRevSheetNumber == 0 && mathRevSheetNumber == 0 && newRevDataCell && oldRevSs) {
           let ui = SpreadsheetApp.getUi();
@@ -760,7 +762,7 @@ function transferStudentData(oldAdminSsId, startTime) {
       for (let i = 0; i < oldMathRevResponseValues.length; i++) {
         if (oldMathRevResponseValues[i][0] === '') {
             oldMathRevResponseValues[i] = oldMathRevResponseFormulas[i];
-  
+
         }
       }
 
