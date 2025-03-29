@@ -133,6 +133,8 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       DocumentApp.openById(newFile.getId()).getBody().replaceText('StudentName', studentName);
     }
 
+    Logger.log(testType);
+
     if (testType === 'SAT' && fileName.toLowerCase().includes('act') && fileName.toLowerCase().includes('answer analysis')) {
       newFile.setTrashed(true);
     } else if (testType === 'ACT' && fileName.toLowerCase().includes('sat') && fileName.toLowerCase().includes('answer analysis')) {
@@ -141,22 +143,25 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
 
     if (newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
       fileOperations.push({ file: newFile, action: 'move' });
-      Logger.log('new location for ' + newFileName + ': ' + newFile.getParents().next().getId());
-      if (isEmptyFolder(newFolder.getId())) {
-      fileOperations.push({ folder: newFolder, action: 'trash' });
-      Logger.log(newFolderName + ' added to trash operations');
-      }
     }
-    }
+  }
 
-    // Perform file operations in batch
-    fileOperations.forEach(op => {
-      if (op.action === 'move') {
-        op.file.moveTo(newFolder.getParents().next());
-      } else if (op.action === 'trash') {
-        op.folder.setTrashed(true);
-      }
-    });
+  const newParentFolder = newFolder.getParents().next();
+
+  // Perform file operations in batch
+  fileOperations.forEach(op => {
+    if (op.action === 'move') {
+      op.file.moveTo(newParentFolder);
+      Logger.log(file.getName() + ' moved to ' + newParentFolder.getId());
+    } else if (op.action === 'trash') {
+      op.folder.setTrashed(true);
+      Logger.log(op.folder.getName() + ' trashed');
+    }
+  });
+
+  if (isEmptyFolder(newFolder.getId()) && newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
+    newFolder.setTrashed(true);
+  }
 
   while (sourceSubFolders.hasNext()) {
     var sourceSubFolder = sourceSubFolders.next();
@@ -643,6 +648,9 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 function transferOldStudentData() {
   const startTime = new Date().getTime(); // Record the start time
   let ui = SpreadsheetApp.getUi();
+  ui.alert('Data transfer is not currently working properly. Exiting.');
+  return;
+
   let prompt = ui.prompt(
     'Old admin analysis spreadsheet URL or ID - leave blank \r\n' +
     'to update student sheet with this admin spreadsheet\'s data:',
@@ -672,8 +680,9 @@ function transferOldStudentData() {
   transferStudentData(oldAdminSsId, startTime);
 }
 
-function transferStudentData(oldAdminSsId, startTime) {
-  const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
+function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
+  const newAdminSs = SpreadsheetApp.openById('1sEr49XxEbaXUce7LdhxLezx_nn8WWFlwqxrpRWH9ouA');
+  // const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
   const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
@@ -791,13 +800,12 @@ function transferStudentData(oldAdminSsId, startTime) {
     let allNewStudentSheetValues = [];
 
     for (let s in answerSheets) {
-
       let sheetName = answerSheets[s];
       let newAdminSheet = newAdminSs.getSheetByName(sheetName);
       let newStudentSheet = newStudentSs.getSheetByName(sheetName);
 
       if (newAdminSheet) {
-        Logger.log('Transferring answers for ' + newAdminSheet.getName());
+        Logger.log('Transferring answers for ' + sheetName);
         let newAnswersLevel1, newAnswersLevel2, newAnswersLevel3;
         let newStudentLevel1, newStudentLevel2, newStudentLevel3;
 
