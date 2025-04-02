@@ -648,8 +648,8 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 function transferOldStudentData() {
   const startTime = new Date().getTime(); // Record the start time
   let ui = SpreadsheetApp.getUi();
-  ui.alert('Data transfer is not currently working properly. Exiting.');
-  return;
+  // ui.alert('Data transfer is not currently working properly. Exiting.');
+  // return;
 
   let prompt = ui.prompt(
     'Old admin analysis spreadsheet URL or ID - leave blank \r\n' +
@@ -681,8 +681,7 @@ function transferOldStudentData() {
 }
 
 function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
-  const newAdminSs = SpreadsheetApp.openById('1sEr49XxEbaXUce7LdhxLezx_nn8WWFlwqxrpRWH9ouA');
-  // const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
+  const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
   const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
@@ -699,12 +698,14 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
     const oldRevSheet = oldAdminSs.getSheetByName('Rev sheets');
     const newRevSheet = newAdminSs.getSheetByName('Rev sheets');
 
+    if (oldAdminSsId !== newAdminSs.getId()) {
+      // temporarily set old admin data imports
+      newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
+      newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
+    }
+
     if (oldRevSheet) {
       if (oldAdminSsId !== newAdminSs.getId()) {
-        // temporarily set old admin data imports
-        newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
-        newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
-
         let oldRevBackend = oldAdminSs.getSheetByName('Rev sheet backend');
         let oldRevDataId = oldRevBackend.getRange('U3').getValue();
         let oldStudentName = oldRevBackend.getRange('K2').getValue();
