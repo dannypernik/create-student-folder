@@ -697,12 +697,47 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
     initialImportFunction = newStudentData.getRange('A3').getFormula();
     const oldRevSheet = oldAdminSs.getSheetByName('Rev sheets');
     const newRevSheet = newAdminSs.getSheetByName('Rev sheets');
+    let newQbSheet = newAdminSs.getSheetByName('Question bank data');
+    let timestampRange = newQbSheet.getRange(2, 11, getLastFilledRow(newQbSheet, 11));
 
     if (oldAdminSsId !== newAdminSs.getId()) {
       // temporarily set old admin data imports
       newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
       newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
+
+      // build reviewed column
+      newStudentData.getRange('L3').setValue('=importrange("' + oldAdminSsId + '", "Practice test data!E1:M")');
+      const newPracticeDataSheet = newAdminSs.getSheetByName('Practice test data');
+      const reviewedLookup = '=xlookup(E2, \'Student responses\'!$L$4:$L$10000, \'Student responses\'!$T$4:$T$10000,"")';
+      const reviewedStartCell = newPracticeDataSheet.getRange('M2');
+      reviewedStartCell.setFormula(reviewedLookup);
+      const filter = newPracticeDataSheet.getFilter();
+      if(filter) {
+        filter.remove();
+      }
+      newPracticeDataSheet.getRange(1, 1, newPracticeDataSheet.getMaxRows(), 13).createFilter();
+      let reviewedRange = newPracticeDataSheet.getRange('M2:M10000');
+      reviewedStartCell.autoFill(reviewedRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
+      reviewedRange.setValues(reviewedRange.getValues());
+
+      // build timestamp column
+      let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
+      let timestampStartCell = newQbSheet.getRange('K2');
+      timestampStartCell.setFormula(timestampLookup);
+      timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     }
+    
+    let timestampValues = timestampRange.getValues();
+
+    for (let row = 0; row < timestampValues.length; row ++) {
+      let ssRow = row + 2;
+      if (timestampValues[row][0] === '') {
+        timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
+      }
+    }
+    timestampRange.setValues(timestampValues);
+    timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
+
 
     if (oldRevSheet) {
       if (oldAdminSsId !== newAdminSs.getId()) {
@@ -861,6 +896,9 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
               throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
             }
           }
+          else {
+            Logger.log('newAdminRanges[i]=' + newAdminRanges[i] + ', newAdminRanges[i]=' + newStudentRanges[i])
+          }
         }
         let testScore = testScores.find(score => score.test === sheetName);
         if (testScore) {
@@ -871,39 +909,6 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
 
     allNewAdminSheetValues.forEach(item => item.range.setValues(item.values));
     allNewStudentSheetValues.forEach(item => item.range.setValues(item.values));
-
-    // build timestamp column
-    let newQbSheet = newAdminSs.getSheetByName('Question bank data');
-    let timestampLookup = '=xlookup(A2, \'Student responses\'!$A$4:$A$10000, \'Student responses\'!$J$4:$J$10000,"")';
-    let timestampStartCell = newQbSheet.getRange('K2');
-    timestampStartCell.setValue(timestampLookup);
-    let timestampRange = newQbSheet.getRange(2, 11, getLastFilledRow(newQbSheet, 11));
-    timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
-    let timestampValues = timestampRange.getValues();
-
-    for (let row = 0; row < timestampValues.length; row ++) {
-      let ssRow = row + 2;
-      if (timestampValues[row][0] === '') {
-        timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
-      }
-    }
-    timestampRange.setValues(timestampValues);
-    timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
-
-    // build reviewed column
-    newStudentData.getRange('L3').setValue('=importrange("' + oldAdminSsId + '", "Practice test data!E1:M")');
-    const newPracticeDataSheet = newAdminSs.getSheetByName('Practice test data');
-    const reviewedLookup = '=xlookup(E2, \'Student responses\'!$L$4:$L$10000, \'Student responses\'!$T$4:$T$10000,"")';
-    const reviewedStartCell = newPracticeDataSheet.getRange('M2');
-    reviewedStartCell.setValue(reviewedLookup);
-    const filter = newPracticeDataSheet.getFilter();
-    if(filter) {
-      filter.remove();
-    }
-    newPracticeDataSheet.getRange(1, 1, newPracticeDataSheet.getMaxRows(), 13).createFilter();
-    let reviewedRange = newPracticeDataSheet.getRange('M2:M10000');
-    reviewedStartCell.autoFill(reviewedRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
-    reviewedRange.setValues(reviewedRange.getValues());
   }
   catch (err) {
     let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
@@ -924,6 +929,333 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
 }
+
+var cats = [
+  'Area and volume',
+  'Boundaries',
+  'Central ideas and details',
+  'Circles',
+  'Command of evidence',
+  'Cross-text connections',
+  'Distributions',
+  'Equivalent expressions',
+  'Form, structure, and sense',
+  'Inferences',
+  'Linear equations in one variable',
+  'Linear equations in two variables',
+  'Linear functions',
+  'Linear inequalities',
+  'Lines, angles, and triangles',
+  'Models and scatterplots',
+  'Nonlinear equations and systems',
+  'Nonlinear functions',
+  'Observational studies and experiments',
+  'Percentages',
+  'Probability',
+  'Ratios, rates, proportions, and units',
+  'Systems of linear equations',
+  'Right triangles and trigonometry',
+  'Sample statistics and margin of error',
+  'Words in context',
+  'Transitions',
+  'Rhetorical synthesis',
+  'Text, structure, and purpose',
+];
+
+
+function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JHiNP8', studentSsId = null) {
+
+  const dataLatestDate = '03/2025';
+  
+  const qbDataSh = SpreadsheetApp.openById('1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE').getSheetByName('Question bank data updated 03/2025');
+  const qbDataVals = qbDataSh.getRange(1,1, getLastFilledRow(qbDataSh, 1), 15).getValues();
+
+  const subjectData = [
+    {
+      'name': 'Reading & Writing',
+      'rowOffset': 7,
+    },
+    {
+      'name': 'Math',
+      'rowOffset': 10
+    }
+  ]
+  
+  for (id of [adminSsId, studentSsId]) { 
+
+    const ss = SpreadsheetApp.openById(id);
+    let isAdminSs;
+    
+    if (id === adminSsId) {
+      isAdminSs = true;
+    }
+    else {
+      isAdminSs = false;
+    }
+    
+    for (subject of subjectData) {
+      const sh = ss.getSheetByName(subject['name']);
+      const conceptColVals = sh.getRange(subject['rowOffset'], 2, sh.getMaxRows() - subject['rowOffset']).getValues();
+      const conceptData = [];
+      const modifications = [];
+      let id = 1;
+
+      for (let x = 0; x < conceptColVals.length; x++) {
+        if (cats.includes(conceptColVals[x][0])) {
+          var row = x + subject['rowOffset'];
+          conceptData.push({
+            'name': conceptColVals[x][0],
+            'row': row,                        // row 1-indexed
+            'id': id
+          });
+          id ++;
+        }
+      }
+
+      for (concept of conceptData) {
+        for (let level = 1; level < 4; level ++) {
+          let count = 0;
+          for (let r = 0; r < qbDataVals.length; r++) {
+            if (qbDataVals[r][3].toLowerCase() === concept['name'].toLowerCase() && Number(qbDataVals[r][4]) === level && qbDataVals[r][6].slice(0,3) !== 'SAT' && qbDataVals[r][6].slice(0,4) !== 'PSAT' && qbDataVals[r][6].slice(0,3) !== 'SLT') {
+              count ++;
+            }
+          }
+          concept['level' + level] = count;
+        }
+      }
+      
+      Logger.log('Calculating row modifications for ' + subject.name);
+      for (concept of conceptData) {
+        const rowsNeeded = Math.max(concept['level1'], concept['level2'], concept['level3']) + 4;
+        const nextConcept = conceptData.find(c => c.id === concept['id'] + 1);
+        let rowsToAdd, endRow;
+
+        if (nextConcept) {
+          endRow = nextConcept.row;
+        }
+        else {
+          endRow = sh.getMaxRows() + 1;
+        }
+        rowsToAdd = concept['row'] + rowsNeeded - endRow;
+
+        if (rowsToAdd > 0) {
+          modifications.push({
+            'position': endRow - 1,
+            'rows': rowsToAdd
+          });
+        }
+        else if (rowsToAdd < 0) {
+          modifications.push({
+            'position': concept['row'] + rowsNeeded + rowsToAdd - 1, // rowsToAdd negative
+            'rows': rowsToAdd
+          });
+        }
+      }
+      modifyRowsAtPositions(sh, modifications);
+
+      const shNewRange = sh.getRange(subject['rowOffset'], 1, sh.getMaxRows() - subject['rowOffset'], sh.getMaxColumns());
+      shNewRange.setNumberFormat('@STRING@');
+      const shNewVals = shNewRange.getValues();
+      const shFormulas = shNewRange.getFormulas();
+      const newConceptRows = shNewVals.map(row => row[1]);
+
+      for (let level = 1; level < 4; level++) {
+        const levelStartCol = (level - 1) * 4;
+
+        for (concept of conceptData) {
+
+          // Since newConceptRows starts at subject['rowOffset'] and includes blanks,
+          // concept['index'] is 0-indexed position of concept name starting at 1st concept
+          concept['index'] = newConceptRows.indexOf(concept['name']);
+
+          const levelRow = concept['index'] + 2;
+          shNewVals[levelRow][levelStartCol + 1] = shFormulas[levelRow][levelStartCol + 1];
+
+          for (qNum = 1; qNum <= concept['level' + level]; qNum++) {
+            const qRow = levelRow + qNum;
+    
+            // Find the matching row in Question bank data
+            const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
+            shNewVals[qRow] = []
+            shNewVals[qRow][levelStartCol] = dataRow[0];
+            shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
+          }
+        }
+
+        const outputValues = [];
+        for (let i = 0; i < shNewVals.length; i++) {
+          outputValues.push([
+            shNewVals[i][levelStartCol], 
+            shNewVals[i][levelStartCol + 1]
+          ]);
+        }
+
+        sh.getRange(subject['rowOffset'], levelStartCol + 1, outputValues.length, 2).setValues(outputValues);
+        sh.getRange(subject['rowOffset'], levelStartCol + 2, outputValues.length).setHorizontalAlignment('center').setFontWeight('bold')
+      }
+
+
+      const answerFormulaR1C1 = '=let(worksheetNum,R[0]C[-1],if(worksheetNum="","", if(iserror(search(".",worksheetNum)),"", let(id,R[0]C[-2], xlookup(id,\'Student responses\'!R4C1:C1,\'Student responses\'!R4C8:C8,"not found")))))'
+      const correctedFormulaR1C1 = '=let(worksheetNum,R[0]C[-2],if(worksheetNum="","", if(left(worksheetNum,5)="Level","Corrected", if(iserror(search(".",worksheetNum)), "", let(id,R[0]C[-3], result,xlookup(id,\'Question bank data\'!R2C1:C1,\'Question bank data\'!R2C8:C8,"not found"), if(result=R[0]C[-1],"",result))))))'
+
+      if (isAdminSs) {
+        for (let level = 1; level < 4; level++) {
+          const answerCol = 4 * (level - 1) + 3;
+          if (studentSsId) {
+            const answerRange = sh.getRange(subject['rowOffset'] + 3, answerCol, sh.getMaxRows() - subject['rowOffset'] - 3);
+            const answerVals = answerRange.getValues();
+
+            for (let r = 0; r < answerVals.length; r ++) {
+              let startRow = subject['rowOffset'] + 3 + r;
+              let numRows = 0;
+
+              // Set R1C1 formula for consecutive blank rows, leave values as is
+              while (r < answerVals.length && answerVals[r][0] === '') {
+                numRows ++;
+                r ++;
+              }
+              if (numRows > 0) {
+                sh.getRange(startRow, answerCol, numRows).setFormulaR1C1(answerFormulaR1C1);
+              }
+            }
+            answerRange.setHorizontalAlignment('center').setFontWeight('normal');
+          }
+          const correctedRange = sh.getRange(subject['rowOffset'] + 3, answerCol + 1, sh.getMaxRows() - subject['rowOffset'] - 3);
+          correctedRange.setHorizontalAlignment('center').setFontWeight('normal').setFormulaR1C1(correctedFormulaR1C1);
+        }
+
+        Logger.log('formulas updated for ' + subject.name);
+      }
+
+      for (concept of conceptData) {
+        const headerStartRow = concept['index'] + subject['rowOffset'];
+        sh.getRange(headerStartRow, 2, 1, 11).merge().setHorizontalAlignment('left');
+        sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
+      }
+      
+      modifyConceptFormatRules(sh, isAdminSs);
+    }
+
+    if (isAdminSs) {
+      ss.getSheetByName('Question bank data').getRange('A1').setValue('=importrange(\'Rev sheet backend\'!U5, "Question bank data updated ' + dataLatestDate + '!A1:H10000")');
+      ss.getSheetByName('Practice test data').getRange('A1').setValue('=importrange(\'Rev sheet backend\'!U5, "Practice test data updated ' + dataLatestDate + '!A1:J10000")');
+      Logger.log('sat admin data URLs updated')
+    }
+    else {
+      // Student sheets do not have separate studentDataId cell 
+      const qbImportCell = ss.getSheetByName('Question bank data').getRange('A1');
+      const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
+      const qbImportValue = qbImportCell.getFormula();
+      const ptImportValue = ptImportCell.getFormula();
+      const newQbImportValue = qbImportValue.replace(/data.*?!/, `data updated ${dataLatestDate}!`);
+      const newPtImportValue = ptImportValue.replace(/data.*?!/, `data updated ${dataLatestDate}!`);
+      qbImportCell.setFormula(newQbImportValue);
+      ptImportCell.setFormula(newPtImportValue);
+      Logger.log('sat student data URLs updated');
+    }
+  }
+}
+
+function modifyRowsAtPositions(sheet, modifications) {
+  // Sort modifications in descending order of positions to avoid shifting issues
+  modifications.sort((a, b) => b.position - a.position);
+
+  // Apply each modification
+  modifications.forEach(mod => {
+    if (mod.rows > 0) {
+      // Insert rows if `rows` is positive
+      sheet.insertRows(mod.position, mod.rows);
+    } else if (mod.rows < 0) {
+      // Delete rows if `rows` is negative
+      sheet.deleteRows(mod.position, Math.abs(mod.rows));
+    }
+  });
+  Logger.log('Row modifications complete')
+}
+
+function modifyConceptFormatRules(sheet, isAdminSs) {
+  const alertColor = '#cc0000';
+  const darkGreen = '#6aa84f';
+  const lightGreen = '#b7e1cd';
+  const darkRed = '#e06666';
+  const lightRed = '#f4c7c3';
+  const grey = '#f3f3f3';
+  const yellow = '#fff2cc';
+  // Get all existing conditional formatting rules
+  var rules = sheet.getConditionalFormatRules();
+  
+  // Create an array to store updated rules
+  var updatedRules = [];
+  
+  // Iterate through each rule
+  for (var i = 0; i < rules.length; i++) {
+    var rule = rules[i];
+    var bgColor = rule.getBooleanCondition().getBackgroundObject().asRgbColor().asHexString();
+    
+    if (bgColor === alertColor) {
+      // Modify the rule
+      rule = SpreadsheetApp.newConditionalFormatRule()
+        .setRanges([sheet.getRange('A10:A'), sheet.getRange('E10:E'), sheet.getRange('I10:I')])
+        .whenFormulaSatisfied('=and(len(A10)<>8,B10<>"",B9<>"")')
+        .setBackground(alertColor)
+        .setFontColor('#ffffff')
+        .build();
+    }
+    else if (bgColor === yellow) {
+      rule = SpreadsheetApp.newConditionalFormatRule()
+        .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+        .whenFormulaSatisfied('=and(or(C10="",C10="-"),B10<>"",B9<>"")')
+        .setBackground(yellow)
+        .build();
+    }
+
+    if (isAdminSs) {  
+      if (bgColor === darkGreen) {
+        rule = SpreadsheetApp.newConditionalFormatRule()
+          .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+          .whenFormulaSatisfied('=and(C10<>"",D10="",isformula(C10))')
+          .setBackground(darkGreen)
+          .setFontColor('#ffffff')
+          .build();
+      }
+      else if (bgColor === lightGreen) {
+        rule = SpreadsheetApp.newConditionalFormatRule()
+          .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+          .whenFormulaSatisfied('=and(C10<>"",D10="",B9<>"")')
+          .setBackground(lightGreen)
+          .build();
+      }
+      else if (bgColor === darkRed) {
+        rule = SpreadsheetApp.newConditionalFormatRule()
+          .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+          .whenFormulaSatisfied('=and(C10<>"",D10<>"",isformula(C10),B9<>"")')
+          .setBackground(darkRed)
+          .setFontColor('#ffffff')
+          .build();
+      }
+      else if (bgColor === lightRed) {
+        rule = SpreadsheetApp.newConditionalFormatRule()
+          .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+          .whenFormulaSatisfied('=and(C10<>"",D10<>"",B9<>"")')
+          .setBackground(lightRed)
+          .build();
+      }
+      else if (bgColor === grey) {
+        rule = SpreadsheetApp.newConditionalFormatRule()
+          .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
+          .whenFormulaSatisfied('=and(not(isformula(C10)),C10="",B10<>"",B9<>"")')
+          .setBackground(grey)
+          .build();
+      }
+    }
+    
+    updatedRules.push(rule); // Add updated or existing rule
+  }
+  
+  // Reapply all rules to the sheet
+  sheet.setConditionalFormatRules(updatedRules);
+}
+
 
 function getTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
