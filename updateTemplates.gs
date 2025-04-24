@@ -234,17 +234,14 @@ function addTestSheets(adminSsId = '1cZtZpXVfI4B1Yzwxu4rKNreNbJQwTArkm42XIz2Gw5Y
         newSheet.getRange('A3').setValue(testNumber);
 
         const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1]), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
-        const questionCodeStartA = newSheet.getRange('A5').setValue(questionCodeFormulaR1C1);
-        const questionCodeStartE = newSheet.getRange('E5').setValue(questionCodeFormulaR1C1);
-        const questionCodeStartI = newSheet.getRange('I5').setValue(questionCodeFormulaR1C1);
 
         const colARange = newSheet.getRange('A5:A57');
         const colERange = newSheet.getRange('E5:E57');
         const colIRange = newSheet.getRange('I5:I57');
 
-        questionCodeStartA.autoFill(colARange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
-        questionCodeStartE.autoFill(colERange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
-        questionCodeStartI.autoFill(colIRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
+        colARange.setValue(questionCodeFormulaR1C1);
+        colERange.setValue(questionCodeFormulaR1C1);
+        colIRange.setValue(questionCodeFormulaR1C1);
 
         SpreadsheetApp.flush();
 
