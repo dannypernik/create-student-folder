@@ -189,7 +189,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
 }
 
 
-function addTestSheets(adminSsId = '1cZtZpXVfI4B1Yzwxu4rKNreNbJQwTArkm42XIz2Gw5Y') {
+function addTestSheets(adminSsId) {
   const testCodes = getTestCodes();
   
   if (!adminSsId) {
