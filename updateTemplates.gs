@@ -427,7 +427,7 @@ function findStudentFileIds(
     'studentsDataJSON': null
   })
   {
-  const index = client.index || 1;
+  const index = client.index || 0;
 
   Logger.log(index + '. ' + client.name + ' started');
 
