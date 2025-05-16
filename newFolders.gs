@@ -91,6 +91,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
   var sourceFolder = DriveApp.getFolderById(sourceFolderId);
   const newFolder = DriveApp.getFolderById(newFolderId);
   const newFolderName = newFolder.getName();
+  Logger.log(`${newFolderName} folder started`)
 
   var sourceSubFolders = sourceFolder.getFolders();
   var files = sourceFolder.getFiles();
