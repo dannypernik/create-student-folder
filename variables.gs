@@ -39,19 +39,9 @@ var satSheetIds = {
   adminData: null,
 };
 
-var satSheetDataUrls = {
-  admin: null,
-  student: null,
-};
-
 var actSheetIds = {
   admin: null,
   student: null,
   studentData: null,
   adminData: null,
-};
-
-var actSheetDataUrls = {
-  admin: null,
-  student: null,
 };
