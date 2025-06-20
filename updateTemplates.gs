@@ -189,35 +189,36 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
 }
 
 
-function addTestSheets(adminSsId) {
-  const testCodes = getTestCodes();
+function addSatTestSheets(adminSsId) {
+  const testCodes = getSatTestCodes();
   
   if (!adminSsId) {
     adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
 
   const adminSs = SpreadsheetApp.openById(adminSsId);
+  const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('satAdminTemplateSsId'));
+  const adminTemplateSheet = adminTemplateSs.getSheetByName('SAT4');
   const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const studentSs = SpreadsheetApp.openById(studentSsId);
-  const adminTemplateSs = SpreadsheetApp.openById('1_AG-LWa0r8WPKwdD3ejzBB7bAAooOt_rEsv6TA8BzkY');
-  const adminTemplateSheet = adminTemplateSs.getSheetByName('SAT4');
-  const studentTemplateSheet = SpreadsheetApp.openById('1Zx1hxyuBsY6QzlMRn13K4LIovCSbsSJv_E6P5w94KoQ').getSheetByName('SAT4');
+  const studentTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('satStudentTemplateSsId'));
+  const studentTemplateSheet = studentTemplateSs.getSheetByName('SAT4');
+
+  const spreadsheets = [
+    {
+      'ss': studentSs,
+      'templateSheet': studentTemplateSheet
+    },
+    {
+      'ss': adminSs,
+      'templateSheet': adminTemplateSheet
+    }
+  ]
 
   for (testCode of testCodes) {
     const testNumberPosition = testCode.indexOf('SAT') + 3;
     const testType = testCode.substring(0, testNumberPosition)
     const testNumber = testCode.substring(testNumberPosition);
-
-    const spreadsheets = [
-      {
-        'ss': studentSs,
-        'templateSheet': studentTemplateSheet
-      },
-      {
-        'ss': adminSs,
-        'templateSheet': adminTemplateSheet
-      }
-    ]
     
     for (obj of spreadsheets) {
       const testSheet = obj.ss.getSheetByName(testCode);
@@ -261,6 +262,86 @@ function addTestSheets(adminSsId) {
       newAnalysisSheet.getRange('A8').setValue(testNumber);
       Logger.log(`Added ${testCode} analysis sheet to ${adminSs.getName()}`)
     }
+  }
+}
+
+
+function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
+  let adminSs;
+  if (!adminSsId) {
+    adminSs = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  else {
+    adminSs = SpreadsheetApp.openById(adminSsId);
+  }
+
+  const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
+  const studentSs = SpreadsheetApp.openById(studentSsId);
+  const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actAdminTemplateSsId'));
+  const adminTemplateSheet = adminTemplateSs.getSheetByName('202206');
+  const studentTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actStudentTemplateSsId'));
+  const studentTemplateSheet = studentTemplateSs.getSheetByName('202206');
+
+  const spreadsheets = [
+    {
+      'ss': studentSs,
+      'templateSheet': studentTemplateSheet,
+      'indexAdjustment': 1
+    },
+    {
+      'ss': adminSs,
+      'templateSheet': adminTemplateSheet,
+      'indexAdjustment': adminIndexAdjustment     // 1-indexed + # of analysis sheets
+    }
+  ]
+
+  const testCodes = getActTestCodes();
+  for (obj of spreadsheets) {
+    for (testCode of testCodes) {  
+      const testSheet = obj.ss.getSheetByName(testCode);
+
+      if (!testSheet) {
+        Logger.log(`Adding ${testCode} sheet to ${obj.ss.getName()}`);
+        const templateSheet = obj.templateSheet;
+        const newSheet = templateSheet.copyTo(obj.ss).setName(testCode);
+        newSheet.getRange('B1').setValue(testCode);
+
+        const testCodeIndex = testCodes.indexOf(testCode);
+
+        obj.ss.setActiveSheet(newSheet);
+        if (testCodeIndex > 0) {
+          const prevTest = testCodes[testCodeIndex - 1];
+          const prevTestPosition = obj.ss.getSheetByName(prevTest).getIndex() || 0;
+          Logger.log(`Previous sheet: ${prevTest}, index ${prevTestPosition}`);
+          obj.ss.moveActiveSheet(prevTestPosition + obj.indexAdjustment);
+        }
+        else {
+          obj.ss.moveActiveSheet(1);
+        }
+      }
+    }
+  }
+}
+
+function sortActTestSheets(ssId, testCodes, isAdminSheet=true) {
+  const ss = SpreadsheetApp.openById(ssId);
+  if(!testCodes) {
+    testCodes = getActTestCodes();
+  }
+
+  let indexAdjustment;
+  if (isAdminSheet) {
+    indexAdjustment = 3;   // 1-indexed + 2 analysis sheets
+  }
+  else {
+    indexAdjustment = 1;
+  }
+
+  for (let i = 0; i < testCodes.length; i++) {
+    const testCode = testCodes[i];
+    const testSheet = ss.getSheetByName(testCode);
+    ss.setActiveSheet(testSheet);
+    ss.moveActiveSheet(i + indexAdjustment);
   }
 }
 

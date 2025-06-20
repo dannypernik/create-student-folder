@@ -1,4 +1,4 @@
-function getTestCodes() {
+function getSatTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
   const testCodeCol = practiceTestDataSheet
@@ -6,6 +6,21 @@ function getTestCodes() {
     .getValues()
     .map((row) => row[0]);
   const testCodes = testCodeCol.filter((x, i, a) => a.indexOf(x) == i);
+
+  return testCodes;
+}
+
+
+function getActTestCodes() {
+  const dataSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actMasterDataSsId')).getSheetByName('ACT Answers');
+  const lastFilledRow = getLastFilledRow(dataSheet, 1);
+  const testCodeCol = dataSheet
+    .getRange(2, 1, lastFilledRow - 1)
+    .getValues()
+    .map((row) => row[0]);
+  const testCodes = testCodeCol.filter((x, i, a) => a.indexOf(x) == i).sort().reverse();
+
+  Logger.log(testCodes)
 
   return testCodes;
 }
