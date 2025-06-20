@@ -79,7 +79,7 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
       timestampStartCell.setFormula(timestampLookup);
       timestampStartCell.autoFill(timestampRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
     }
-    
+
     let timestampValues = timestampRange.getValues();
 
     for (let row = 0; row < timestampValues.length; row ++) {
@@ -168,7 +168,7 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
       newRevSheet.getRange(4, 9, oldMathRevResponseValues.length).setValues(oldMathRevResponseValues);
     }
 
-    let answerSheets = getTestCodes(oldAdminSs);
+    let answerSheets = getSatTestCodes(oldAdminSs);
     let testScores = [];
 
     for (let s in answerSheets) {

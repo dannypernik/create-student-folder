@@ -225,7 +225,7 @@ function linkSheets(folderId, studentName='', prepType='all') {
 
       ss.getSheets().forEach(s => {
         let sName = s.getName();
-        let answerSheets = getTestCodes(ss);
+        let answerSheets = getSatTestCodes(ss);
         answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
         if (answerSheets.includes(sName)) {

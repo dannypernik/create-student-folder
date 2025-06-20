@@ -12,19 +12,19 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
       'rowOffset': 10
     }
   ]
-  
-  for (id of [adminSsId, studentSsId]) { 
+
+  for (id of [adminSsId, studentSsId]) {
 
     const ss = SpreadsheetApp.openById(id);
     let isAdminSs;
-    
+
     if (id === adminSsId) {
       isAdminSs = true;
     }
     else {
       isAdminSs = false;
     }
-    
+
     for (subject of subjectData) {
       const sh = ss.getSheetByName(subject['name']);
       const conceptColVals = sh.getRange(subject['rowOffset'], 2, sh.getMaxRows() - subject['rowOffset']).getValues();
@@ -55,7 +55,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
           concept['level' + level] = count;
         }
       }
-      
+
       Logger.log('Calculating row modifications for ' + subject.name);
       for (concept of conceptData) {
         const rowsNeeded = Math.max(concept['level1'], concept['level2'], concept['level3']) + 4;
@@ -105,7 +105,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
 
           for (qNum = 1; qNum <= concept['level' + level]; qNum++) {
             const qRow = levelRow + qNum;
-    
+
             // Find the matching row in Question bank data
             const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
             shNewVals[qRow] = []
@@ -117,7 +117,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
         const outputValues = [];
         for (let i = 0; i < shNewVals.length; i++) {
           outputValues.push([
-            shNewVals[i][levelStartCol], 
+            shNewVals[i][levelStartCol],
             shNewVals[i][levelStartCol + 1]
           ]);
         }
@@ -164,7 +164,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
         sh.getRange(headerStartRow, 2, 1, 11).merge().setHorizontalAlignment('left');
         sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
       }
-      
+
       modifyConceptFormatRules(sh, isAdminSs);
     }
 
@@ -174,7 +174,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
       Logger.log('sat admin data URLs updated')
     }
     else {
-      // Student sheets do not have separate studentDataId cell 
+      // Student sheets do not have separate studentDataId cell
       const qbImportCell = ss.getSheetByName('Question bank data').getRange('A1');
       const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
       const qbImportValue = qbImportCell.getFormula();
@@ -191,7 +191,7 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
 
 function addSatTestSheets(adminSsId) {
   const testCodes = getSatTestCodes();
-  
+
   if (!adminSsId) {
     adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
@@ -219,7 +219,7 @@ function addSatTestSheets(adminSsId) {
     const testNumberPosition = testCode.indexOf('SAT') + 3;
     const testType = testCode.substring(0, testNumberPosition)
     const testNumber = testCode.substring(testNumberPosition);
-    
+
     for (obj of spreadsheets) {
       const testSheet = obj.ss.getSheetByName(testCode);
 
@@ -297,7 +297,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
 
   const testCodes = getActTestCodes();
   for (obj of spreadsheets) {
-    for (testCode of testCodes) {  
+    for (testCode of testCodes) {
       const testSheet = obj.ss.getSheetByName(testCode);
 
       if (!testSheet) {
@@ -374,15 +374,15 @@ function modifyConceptFormatRules(sheet, isAdminSs) {
   const yellow = '#fff2cc';
   // Get all existing conditional formatting rules
   var rules = sheet.getConditionalFormatRules();
-  
+
   // Create an array to store updated rules
   var updatedRules = [];
-  
+
   // Iterate through each rule
   for (var i = 0; i < rules.length; i++) {
     var rule = rules[i];
     var bgColor = rule.getBooleanCondition().getBackgroundObject().asRgbColor().asHexString();
-    
+
     if (bgColor === alertColor) {
       // Modify the rule
       rule = SpreadsheetApp.newConditionalFormatRule()
@@ -400,7 +400,7 @@ function modifyConceptFormatRules(sheet, isAdminSs) {
         .build();
     }
 
-    if (isAdminSs) {  
+    if (isAdminSs) {
       if (bgColor === darkGreen) {
         rule = SpreadsheetApp.newConditionalFormatRule()
           .setRanges([sheet.getRange('C10:C'), sheet.getRange('G10:G'), sheet.getRange('K10:K')])
@@ -439,10 +439,10 @@ function modifyConceptFormatRules(sheet, isAdminSs) {
           .build();
       }
     }
-    
+
     updatedRules.push(rule); // Add updated or existing rule
   }
-  
+
   // Reapply all rules to the sheet
   sheet.setConditionalFormatRules(updatedRules);
 }
@@ -476,7 +476,7 @@ function findClientFileIds() {
     }
     clientData[7][1] = studentsFolderId;
   }
-  
+
   let studentsStr = clientData[8][1];
   const studentsJSON = studentsStr ? JSON.parse(studentsStr) : [];
 
@@ -522,8 +522,8 @@ function findStudentFileIds(
     const studentFolderName = studentFolder.getName();
 
     studentFolderIds.push(studentFolderId);
-    
-    if (!studentFolderName.includes('Ξ')) {  
+
+    if (!studentFolderName.includes('Ξ')) {
       const studentObj = students.find(obj => obj.folderId === studentFolderId);
       if (studentObj) {
         Logger.log(`${studentFolderName} found with folder ID ${studentFolderId}`);
@@ -593,7 +593,7 @@ function findStudentFileIds(
 }
 
 function ssUpdate202505(students = {}, client = {}) {
-  const qbResArrayVal = 
+  const qbResArrayVal =
     '=let(testCodes,\'Practice test data\'!$E$2:E, testResponses,\'Practice test data\'!$K$2:$K,\n' +
     '    worksheetRanges,vstack(\'Reading & Writing\'!A10:C,\'Reading & Writing\'!E10:G,\'Reading & Writing\'!I10:K,\n' +
     '                           Math!A13:C,Math!E13:G,Math!I13:K,\'SLT Uniques\'!A5:C,\'SLT Uniques\'!E5:G),\n' +
@@ -605,9 +605,9 @@ function ssUpdate202505(students = {}, client = {}) {
     '           vlookup(id,worksheetRanges,3,FALSE)))))'
 
   const sltFilterR1C1 = "=FILTER({'Question bank data'!R2C1:C1,'Question bank data'!R2C7:C7},left('Question bank data'!R2C7:C7,3)=\"SLT\",'Question bank data'!R2C2:C2=R[-3]C[1])"
-  
+
   const studentsDataCell = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rev sheet backend').getRange('U9');
-  
+
   // iterate through all folders in Students including template folder
   for (let student of students) {
     if (student.satAdminSsId && !student.updateComplete) {
@@ -700,7 +700,7 @@ function updateSatDataSheets(satAdminDataSsId, satStudentDataSsId) {
 
 function modifyTestFormatRules(satAnswerSheetId='1FW_3GIWmytdrgBdfSuIl2exy9hIAnQoG8IprF8k9uEY') {
   const ss = SpreadsheetApp.openById(satAnswerSheetId);
-  const tests = getTestCodes();
+  const tests = getSatTestCodes();
 
   for (test of tests) {
     const sh = ss.getSheetByName(test);
@@ -708,11 +708,11 @@ function modifyTestFormatRules(satAnswerSheetId='1FW_3GIWmytdrgBdfSuIl2exy9hIAnQ
       var rules = sh.getConditionalFormatRules();
       const alertColor = '#cc0000';
       const updatedRules = [];
-      
+
       for (var i = 0; i < rules.length; i++) {
         var rule = rules[i];
         var bgColor = rule.getBooleanCondition().getBackgroundObject().asRgbColor().asHexString();
-        
+
         if (bgColor !== alertColor) {
           updatedRules.push(rule);
         }
@@ -731,10 +731,10 @@ function modifyTestFormatRules(satAnswerSheetId='1FW_3GIWmytdrgBdfSuIl2exy9hIAnQ
       .setBackground(alertColor)
       .setFontColor('#ffffff')
       .build();
-    
+
       updatedRules.push(rwRule, mathRule);
       sh.setConditionalFormatRules(updatedRules);
     }
   }
-  Logger.log('Test sheets formatting updated');  
+  Logger.log('Test sheets formatting updated');
 }
