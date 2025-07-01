@@ -1,5 +1,8 @@
-function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JHiNP8', studentSsId = null) {
-  const qbDataSh = SpreadsheetApp.openById('1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE').getSheetByName('Question bank data updated 03/2025');
+function updateConceptData(adminSsId, studentSsId = null) {
+  const satDataSsId = '1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE';
+  const qbDataSheetName = 'Question bank data updated ' + dataLatestDate;
+  const ptDataSheetName = 'Practice test data updated ' + dataLatestDate;
+  const qbDataSh = SpreadsheetApp.openById(satDataSsId).getSheetByName(qbDataSheetName);
   const qbDataVals = qbDataSh.getRange(1,1, getLastFilledRow(qbDataSh, 1), 15).getValues();
 
   const subjectData = [
@@ -14,6 +17,9 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
   ]
 
   for (id of [adminSsId, studentSsId]) {
+    if (!id) {
+      continue;
+    }
 
     const ss = SpreadsheetApp.openById(id);
     let isAdminSs;
@@ -169,12 +175,34 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
     }
 
     if (isAdminSs) {
-      ss.getSheetByName('Question bank data').getRange('A1').setValue('=importrange(\'Rev sheet backend\'!U5, "Question bank data updated ' + dataLatestDate + '!A1:H10000")');
-      ss.getSheetByName('Practice test data').getRange('A1').setValue('=importrange(\'Rev sheet backend\'!U5, "Practice test data updated ' + dataLatestDate + '!A1:J10000")');
+      const qbDataFormula = ss.getSheetByName('Question bank data').getRange('A1').getFormula();
+      const qbCommaIndex = qbDataFormula.indexOf(',');
+      const qbFormulaStart = qbDataFormula.toString().slice(0,qbCommaIndex);
+      const ptDataFormula = ss.getSheetByName('Practice test data').getRange('A1').getFormula();
+      const ptCommaIndex = ptDataFormula.indexOf(',');
+      const ptFormulaStart = ptDataFormula.toString().slice(0,ptCommaIndex);
+
+      const satAdminDataSsId = ss.getSheetByName('Rev sheet backend').getRange('U5').getValue();
+      const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
+
+      if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
+        const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
+        newQbDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + qbDataSheetName + '!A1:H10000")')
+      }
+
+      if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
+        const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
+        newPtDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + ptDataSheetName + '!A1:H10000")')
+      }
+
+
+      ss.getSheetByName('Question bank data').getRange('A1').setValue(qbFormulaStart + ', "' + qbDataSheetName + '!A1:H10000")');
+      ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "Practice test data updated ' + dataLatestDate + '!A1:J10000")');
       Logger.log('sat admin data URLs updated')
     }
     else {
-      // Student sheets do not have separate studentDataId cell
+      // Student sheets do not always have separate studentDataId cell
+      let satStudentDataSsId = ss.getSheetByName('Question bank data').getRange('U7').getValue();
       const qbImportCell = ss.getSheetByName('Question bank data').getRange('A1');
       const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
       const qbImportValue = qbImportCell.getFormula();
@@ -184,6 +212,26 @@ function updateConceptData(adminSsId = '1sdnVpuX8mVkpTdrqZgwz7zph1NdFpueX6CP45JH
       qbImportCell.setFormula(newQbImportValue);
       ptImportCell.setFormula(newPtImportValue);
       Logger.log('sat student data URLs updated');
+
+      if (!satStudentDataSsId){
+        const openQuoteIndex = qbImportValue.indexOf('"');
+        const closeQuoteIndex = qbImportValue.indexOf('"',openQuoteIndex + 1);
+        satStudentDataSsId = qbImportValue.slice(openQuoteIndex + 1, closeQuoteIndex);
+        Logger.log('satStudentDataSsId: ' + satStudentDataSsId);
+        if (satStudentDataSsId.includes('/')) {
+          satStudentDataSsId = satStudentDataSsId.split('/d/')[1].split('/')[0];
+        }
+      }
+
+      const satStudentDataSs = SpreadsheetApp.openById(satStudentDataSsId);
+      if (!satStudentDataSs.getSheetByName(qbDataSheetName)) {
+        const newQbDataSheet = satStudentDataSs.getSheetByName('Question bank data').copyTo(satStudentDataSs).setName(qbDataSheetName);
+        newQbDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + qbDataSheetName + '!A1:H10000")')
+      }
+      if (!satStudentDataSs.getSheetByName(ptDataSheetName)) {
+        const newPtDataSheet = satStudentDataSs.getSheetByName('Practice test data').copyTo(satStudentDataSs).setName(ptDataSheetName);
+        newPtDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + ptDataSheetName + '!A1:H10000")')
+      }
     }
   }
 }
