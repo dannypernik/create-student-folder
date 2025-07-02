@@ -1,4 +1,9 @@
 function updateConceptData(adminSsId, studentSsId = null) {
+  if (!adminSsId) {
+    adminSs = SpreadsheetApp.getActiveSpreadsheet();
+    adminSsId = adminSs.getId();
+    studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
+  }
   const satDataSsId = '1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE';
   const qbDataSheetName = 'Question bank data updated ' + dataLatestDate;
   const ptDataSheetName = 'Practice test data updated ' + dataLatestDate;
@@ -187,12 +192,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
       if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
         const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
-        newQbDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + qbDataSheetName + '!A1:H10000")')
+        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", ' + qbDataSheetName + '"!A1:H10000")')
       }
 
       if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
         const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
-        newPtDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + ptDataSheetName + '!A1:H10000")')
+        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", ' + ptDataSheetName + '!"A1:H10000")')
       }
 
 
@@ -226,11 +231,11 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const satStudentDataSs = SpreadsheetApp.openById(satStudentDataSsId);
       if (!satStudentDataSs.getSheetByName(qbDataSheetName)) {
         const newQbDataSheet = satStudentDataSs.getSheetByName('Question bank data').copyTo(satStudentDataSs).setName(qbDataSheetName);
-        newQbDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + qbDataSheetName + '!A1:H10000")')
+        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:E10000")')
       }
       if (!satStudentDataSs.getSheetByName(ptDataSheetName)) {
         const newPtDataSheet = satStudentDataSs.getSheetByName('Practice test data').copyTo(satStudentDataSs).setName(ptDataSheetName);
-        newPtDataSheet.getRange('A1').setFormula('=import("' + satDataSsId + '", ' + ptDataSheetName + '!A1:H10000")')
+        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:H10000")')
       }
     }
   }
