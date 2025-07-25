@@ -22,6 +22,8 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'SAT folder created successfully');
+
+  return studentName;
 }
 
 function NewActFolder(sourceFolderId, parentFolderId) {
@@ -48,6 +50,8 @@ function NewActFolder(sourceFolderId, parentFolderId) {
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'ACT folder created successfully');
+
+  return studentName;
 }
 
 function NewTestPrepFolder(sourceFolderId, parentFolderId) {
@@ -74,6 +78,8 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Test prep folder created successfully');
+
+  return studentName;
 }
 
 function getFolderIds(sourceFolderId, parentFolderId) {
@@ -213,15 +219,14 @@ function linkSheets(folderId, studentName='', prepType='all') {
   }
 
   satFiles.forEach(({ fileName, fileId }) => {
+    driveFile = DriveApp.getFileById(fileId);
+    driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
     if (fileName.toLowerCase().includes('student answer sheet')) {
       satSheetIds.student = fileId;
-      let satStudentSheet = DriveApp.getFileById(satSheetIds.student);
-      satStudentSheet.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-      satStudentSheet.addEditor(SERVICE_ACCOUNT_EMAIL);
+      driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
     } else if (fileName.toLowerCase().includes('answer analysis')) {
       satSheetIds.admin = fileId;
       let ss = SpreadsheetApp.openById(fileId);
-      DriveApp.getFileById(satSheetIds.admin).addEditor(SERVICE_ACCOUNT_EMAIL);
 
       ss.getSheets().forEach(s => {
         let sName = s.getName();
@@ -239,10 +244,11 @@ function linkSheets(folderId, studentName='', prepType='all') {
   });
 
   actFiles.forEach(({ fileName, fileId }) => {
+    driveFile = DriveApp.getFileById(fileId);
+    driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
     if (fileName.toLowerCase().includes('student answer sheet')) {
       actSheetIds.student = fileId;
-      let actStudentSheet = DriveApp.getFileById(actSheetIds.student);
-      actStudentSheet.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+      driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
     } else if (fileName.toLowerCase().includes('answer analysis')) {
       actSheetIds.admin = fileId;
       const ss = SpreadsheetApp.openById(fileId);

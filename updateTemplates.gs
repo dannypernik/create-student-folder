@@ -80,6 +80,8 @@ function updateConceptData(adminSsId, studentSsId = null) {
           endRow = sh.getMaxRows() + 1;
         }
         rowsToAdd = concept['row'] + rowsNeeded - endRow;
+        Logger.log('rowsToAdd = concept["row"] + rowsNeeded - endRow')
+        Logger.log(`${rowsToAdd} = ${concept['row']} + ${rowsNeeded} - ${endRow}`)
 
         if (rowsToAdd > 0) {
           modifications.push({
@@ -94,6 +96,7 @@ function updateConceptData(adminSsId, studentSsId = null) {
           });
         }
       }
+      Logger.log(modifications);
       modifyRowsAtPositions(sh, modifications);
 
       const shNewRange = sh.getRange(subject['rowOffset'], 1, sh.getMaxRows() - subject['rowOffset'], sh.getMaxColumns());
@@ -192,17 +195,17 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
       if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
         const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
-        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", ' + qbDataSheetName + '"!A1:H10000")')
+        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:H10000")')
       }
 
       if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
         const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
-        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", ' + ptDataSheetName + '!"A1:H10000")')
+        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:J10000")')
       }
 
 
       ss.getSheetByName('Question bank data').getRange('A1').setValue(qbFormulaStart + ', "' + qbDataSheetName + '!A1:H10000")');
-      ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "Practice test data updated ' + dataLatestDate + '!A1:J10000")');
+      ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "' + ptDataSheetName + '!A1:J10000")');
       Logger.log('sat admin data URLs updated')
     }
     else {
@@ -231,11 +234,11 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const satStudentDataSs = SpreadsheetApp.openById(satStudentDataSsId);
       if (!satStudentDataSs.getSheetByName(qbDataSheetName)) {
         const newQbDataSheet = satStudentDataSs.getSheetByName('Question bank data').copyTo(satStudentDataSs).setName(qbDataSheetName);
-        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:E10000")')
+        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:G10000")')
       }
       if (!satStudentDataSs.getSheetByName(ptDataSheetName)) {
         const newPtDataSheet = satStudentDataSs.getSheetByName('Practice test data').copyTo(satStudentDataSs).setName(ptDataSheetName);
-        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:H10000")')
+        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:E10000")')
       }
     }
   }
@@ -518,15 +521,14 @@ function findClientFileIds() {
   catch (e) {
     const ui = SpreadsheetApp.getUi();
     const prompt = ui.prompt('Students folder URL or ID', ui.ButtonSet.OK_CANCEL);
-    studentsFolderId = prompt.getResponseText();
+    response = prompt.getResponseText();
 
     if (prompt.getSelectedButton() == ui.Button.CANCEL) {
       return;
-    } else if (prompt.getResponseText().includes('/folders/')) {
-      studentsFolderId = prompt.getResponseText().split('/folders/')[1].split(/[/?]/)[0];
-      Logger.log(`studentsFolderId: ${studentsFolderId}`);
     } else {
+      studentsFolderId = getIdFromDriveUrl(response);
     }
+
     clientData[7][1] = studentsFolderId;
   }
 
@@ -590,18 +592,21 @@ function findStudentFileIds(
       else {
         Logger.log(`Adding ${studentFolderName} to students data`);
         const adminFiles = studentFolder.getFiles();
-        let satAdminSsId, satStudentSsId;
+        let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
 
         while (adminFiles.hasNext()) {
           const adminFile = adminFiles.next();
-          if (adminFile.getName().toLowerCase().includes('sat admin')) {
-            satAdminSsId = adminFile.getId();
-            break;
-          }
-        }
+          const adminFilename = adminFile.getName().toLowerCase();
+          const adminFileId = adminFile.getId();
 
-        if (satAdminSsId) {
-          satStudentSsId = SpreadsheetApp.openById(satAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
+          if (adminFilename.includes('sat admin')) {
+            satAdminSsId = adminFileId;
+            satStudentSsId = SpreadsheetApp.openById(satAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
+          }
+          else if (adminFilename.includes('act admin')) {
+            actAdminSsId = adminFileId;
+            actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
+          }
         }
 
         students.push({
@@ -609,6 +614,8 @@ function findStudentFileIds(
           'folderId': studentFolderId,
           'satAdminSsId': satAdminSsId,
           'satStudentSsId': satStudentSsId,
+          'actAdminSsId': actAdminSsId,
+          'actStudentSsId': actStudentSsId,
           'updateComplete': false
         })
       }

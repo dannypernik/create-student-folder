@@ -23,11 +23,8 @@ function transferOldStudentData() {
   if (oldAdminDataUrl === '') {
     oldAdminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
-  else if (oldAdminDataUrl.includes('/d/')) {
-    oldAdminSsId = oldAdminDataUrl.split('/d/')[1].split('/')[0];
-  }
   else {
-    oldAdminSsId = oldAdminDataUrl;
+    oldAdminSsId = getIdFromDriveUrl(oldAdminDataUrl);
   }
 
   transferStudentData(oldAdminSsId, startTime);
@@ -209,7 +206,14 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
           newAnswersLevel2 = newAdminSheet.getRange(5, 7, getLastFilledRow(newAdminSheet, 6) - 4);
           newStudentLevel1 = newStudentSheet.getRange(5, 3, getLastFilledRow(newAdminSheet, 2) - 4);
           newStudentLevel2 = newStudentSheet.getRange(5, 7, getLastFilledRow(newAdminSheet, 6) - 4);
-          if (sheetName !== 'SLT Uniques') {
+          if (sheetName === 'SLT Uniques') {
+            // newAdminSheet.getRange(5, 1, newAdminSheet.getMaxRows() - 5, 2).clearContent();
+            // newAdminSheet.getRange(5, 5, newAdminSheet.getMaxRows() - 5, 2).clearContent();
+            // newStudentSheet.getRange(5, 1, newStudentSheet.getMaxRows() - 5, 2).clearContent();
+            // newStudentSheet.getRange(5, 5, newStudentSheet.getMaxRows() - 5, 2).clearContent();
+            Logger.log('SLT Uniques logic needed');
+          }
+          else {
             newAnswersLevel3 = newAdminSheet.getRange(5, 11, getLastFilledRow(newAdminSheet, 10) - 4);
             newStudentLevel3 = newStudentSheet.getRange(5, 11, getLastFilledRow(newAdminSheet, 10) - 4);
           }

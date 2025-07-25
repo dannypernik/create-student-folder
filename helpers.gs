@@ -34,6 +34,23 @@ function getLastFilledRow(sheet, col) {
   return lastFilledRow;
 }
 
+function getIdFromDriveUrl(url) {
+  if (url.includes('/folders/')){
+    id = url.split('/folders/')[1].split(/[/?]/)[0];
+  }
+  else if (url.includes('/d/')) {
+    id = url.split('/d/')[1].split('/')[0];
+  }
+  else if (!url.includes('/')) {
+    id = url;
+  }
+  else {
+    throw Error('Unexpected URL format');
+  }
+
+  return id;
+}
+
 
 function isEmptyFolder(folderId) {
   const folder = DriveApp.getFolderById(folderId);
