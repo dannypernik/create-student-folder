@@ -1,6 +1,7 @@
-var dataLatestDate = '03/2025';
+const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
+const dataLatestDate = '03/2025';
 
-var cats = [
+const cats = [
   'Area and volume',
   'Boundaries',
   'Central ideas and details',
@@ -32,14 +33,14 @@ var cats = [
   'Text, structure, and purpose',
 ];
 
-var satSheetIds = {
+const satSheetIds = {
   admin: null,
   student: null,
   studentData: null,
   adminData: null,
 };
 
-var actSheetIds = {
+const actSheetIds = {
   admin: null,
   student: null,
   studentData: null,

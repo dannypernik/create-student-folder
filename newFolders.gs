@@ -94,57 +94,56 @@ function getFolderIds(sourceFolderId, parentFolderId) {
 }
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat') {
-  var sourceFolder = DriveApp.getFolderById(sourceFolderId);
+  const sourceFolder = DriveApp.getFolderById(sourceFolderId);
   const newFolder = DriveApp.getFolderById(newFolderId);
   const newFolderName = newFolder.getName();
   Logger.log(`${newFolderName} folder started`)
 
-  var sourceSubFolders = sourceFolder.getFolders();
   var files = sourceFolder.getFiles();
+  let testType
 
   if (folderType.toLowerCase() === 'sat') {
-    var testType = 'SAT';
+    testType = 'SAT';
   } else if (folderType.toLowerCase() === 'act') {
-    var testType = 'ACT';
+    testType = 'ACT';
   } else {
-    var testType = 'Test';
+    testType = 'Test';
   }
 
   let fileOperations = [];
 
   while (files.hasNext()) {
-    var file = files.next();
-    let prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
-    var fileName = file.getName();
-    Logger.log(fileName);
+    const file = files.next();
+    const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
+    let filename = file.getName();
 
-    if (prefixFiles.includes(fileName)) {
-      fileName = studentName + ' ' + fileName;
-    } else if (fileName.toLowerCase().includes('template')) {
-      rootName = fileName.slice(0, fileName.indexOf('-') + 2);
-      fileName = rootName + studentName;
+    if (prefixFiles.includes(filename)) {
+      filename = studentName + ' ' + filename;
+    }
+    else if (filename.toLowerCase().includes('template')) {
+      const rootName = filename.slice(0, filename.indexOf('-') + 2);
+      filename = rootName + studentName;
     }
 
-    var newFile = file.makeCopy(fileName, newFolder);
-    var newFileName = newFile.getName().toLowerCase();
+    const newFile = file.makeCopy(filename, newFolder);
+    const newFilename = newFile.getName().toLowerCase();
+    const newFileId = newFile.getId();
 
-    if (newFileName.includes('tutoring notes')) {
-      var ssId = newFile.getId();
-      var ss = SpreadsheetApp.openById(ssId);
-      var sheet = ss.getSheetByName('Session notes');
+    if (newFilename.includes('tutoring notes')) {
+      const ss = SpreadsheetApp.openById(newFileId);
+      const sheet = ss.getSheetByName('Session notes');
       shId = sheet.getSheetId();
-      sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + ssId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")');
+      sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + newFileId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")');
     }
 
-    if (newFileName.includes('admin notes')) {
+    if (newFilename.includes('admin notes')) {
       DocumentApp.openById(newFile.getId()).getBody().replaceText('StudentName', studentName);
     }
 
-    Logger.log(testType);
-
-    if (testType === 'SAT' && fileName.toLowerCase().includes('act') && fileName.toLowerCase().includes('answer analysis')) {
+    if (testType === 'SAT' && filename.toLowerCase().includes('act') && filename.toLowerCase().includes('answer analysis')) {
       newFile.setTrashed(true);
-    } else if (testType === 'ACT' && fileName.toLowerCase().includes('sat') && fileName.toLowerCase().includes('answer analysis')) {
+    }
+    else if (testType === 'ACT' && filename.toLowerCase().includes('sat') && filename.toLowerCase().includes('answer analysis')) {
       newFile.setTrashed(true);
     }
 
@@ -159,10 +158,9 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
   fileOperations.forEach(op => {
     if (op.action === 'move') {
       op.file.moveTo(newParentFolder);
-      Logger.log(file.getName() + ' moved to ' + newParentFolder.getId());
-    } else if (op.action === 'trash') {
+    }
+    else if (op.action === 'trash') {
       op.folder.setTrashed(true);
-      Logger.log(op.folder.getName() + ' trashed');
     }
   });
 
@@ -170,67 +168,73 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
     newFolder.setTrashed(true);
   }
 
+  const sourceSubFolders = sourceFolder.getFolders();
   while (sourceSubFolders.hasNext()) {
-    var sourceSubFolder = sourceSubFolders.next();
-    var folderName = sourceSubFolder.getName();
+    const sourceSubFolder = sourceSubFolders.next();
+    const folderName = sourceSubFolder.getName();
+    let targetFolder;
 
     if (folderName === 'Student') {
-      var targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
-    } else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
-      var targetFolder = newFolder.getParents().next().createFolder(folderName);
-      Logger.log(sourceSubFolder.getName() + ' moved');
-    } else {
-      var targetFolder = newFolder.createFolder(folderName);
+      targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
+    }
+    else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
+      targetFolder = newFolder.getParents().next().createFolder(folderName);
+    }
+    else {
+      targetFolder = newFolder.createFolder(folderName);
     }
 
     targetFolderName = targetFolder.getName();
 
     if (targetFolderName.includes('ACT') && folderType.toLowerCase() === 'sat') {
       targetFolder.setTrashed(true);
-      Logger.log(targetFolderName + ' trashed');
-    } else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
+    }
+    else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
       targetFolder.setTrashed(true);
-      Logger.log(targetFolderName + ' trashed');
-    } else {
+    }
+    else {
       copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType);
     }
   }
 }
 
-function linkSheets(folderId, studentName='', prepType='all') {
-  let folder = DriveApp.getFolderById(folderId);
-  let files = folder.getFiles();
-  let subFolders = folder.getFolders();
-  const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
-
-  let satFiles = [];
-  let actFiles = [];
+function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null) {
+  const folder = DriveApp.getFolderById(folderId);
+  const files = folder.getFiles();
+  const subFolders = folder.getFolders();
+  const satFiles = [];
+  const actFiles = [];
 
   while (files.hasNext()) {
-    let file = files.next();
-    let fileName = file.getName();
-    let fileId = file.getId();
+    const file = files.next();
+    const filename = file.getName();
+    const fileId = file.getId();
 
-    if (fileName.includes('SAT') && prepType !== 'act') {
-      satFiles.push({ fileName, fileId });
-    } else if (fileName.includes('ACT') && prepType !== 'sat') {
-      actFiles.push({ fileName, fileId });
+    if (filename.includes('SAT') && prepType !== 'act') {
+      satFiles.push({ filename, fileId });
+    }
+    else if (filename.includes('ACT') && prepType !== 'sat') {
+      actFiles.push({ filename, fileId });
+    }
+    else if (filename === `homework - ${studentName}`) {
+      homeworkSsId = fileId;
     }
   }
 
-  satFiles.forEach(({ fileName, fileId }) => {
+  satFiles.forEach(({ filename, fileId }) => {
     driveFile = DriveApp.getFileById(fileId);
     driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-    if (fileName.toLowerCase().includes('student answer sheet')) {
+    if (filename.toLowerCase().includes('student answer sheet')) {
       satSheetIds.student = fileId;
       driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    } else if (fileName.toLowerCase().includes('answer analysis')) {
+    }
+    else if (filename.toLowerCase().includes('answer analysis')) {
       satSheetIds.admin = fileId;
-      let ss = SpreadsheetApp.openById(fileId);
+      const ss = SpreadsheetApp.openById(fileId);
 
       ss.getSheets().forEach(s => {
-        let sName = s.getName();
-        let answerSheets = getSatTestCodes(ss);
+        const sName = s.getName();
+        const answerSheets = getSatTestCodes(ss);
         answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
         if (answerSheets.includes(sName)) {
@@ -238,18 +242,18 @@ function linkSheets(folderId, studentName='', prepType='all') {
         }
       });
 
-      let revBackend = ss.getSheetByName('Rev sheet backend');
+      const revBackend = ss.getSheetByName('Rev sheet backend');
       revBackend.getRange('K2').setValue(studentName);
     }
   });
 
-  actFiles.forEach(({ fileName, fileId }) => {
+  actFiles.forEach(({ filename, fileId }) => {
     driveFile = DriveApp.getFileById(fileId);
     driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-    if (fileName.toLowerCase().includes('student answer sheet')) {
+    if (filename.toLowerCase().includes('student answer sheet')) {
       actSheetIds.student = fileId;
       driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    } else if (fileName.toLowerCase().includes('answer analysis')) {
+    } else if (filename.toLowerCase().includes('answer analysis')) {
       actSheetIds.admin = fileId;
       const ss = SpreadsheetApp.openById(fileId);
       ss.getSheetByName('Student responses').getRange('G1').setValue(studentName);
@@ -258,36 +262,36 @@ function linkSheets(folderId, studentName='', prepType='all') {
 
   while (subFolders.hasNext()) {
     var subFolder = subFolders.next();
-    linkSheets(subFolder.getId(), studentName, prepType); // Added prepType to recursive call
-    if (prepType === 'all' && satSheetIds.student && satSheetIds.admin && actSheetIds.student && actSheetIds.admin) {
+    linkSheets(subFolder.getId(), studentName, prepType, homeworkSsId);
+    if (prepType === 'all' && satSheetIds.student && satSheetIds.admin && actSheetIds.student && actSheetIds.admin && homeworkSsId) {
       break;
     }
-    else if (prepType === 'sat' && satSheetIds.student && satSheetIds.admin) {
+    else if (prepType === 'sat' && satSheetIds.student && satSheetIds.admin && homeworkSsId) {
       break;
     }
-    else if (prepType === 'act' && actSheetIds.student && actSheetIds.admin) {
+    else if (prepType === 'act' && actSheetIds.student && actSheetIds.admin && homeworkSsId) {
       break;
     }
   }
 
   if (satSheetIds.student && satSheetIds.admin) {
-    let satAdminSheet = SpreadsheetApp.openById(satSheetIds.admin);
-    let satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
+    const satAdminSheet = SpreadsheetApp.openById(satSheetIds.admin);
+    const satStudentSheet = SpreadsheetApp.openById(satSheetIds.student);
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
 
-    let revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('U3').getValue();
-    let revDataSheet = SpreadsheetApp.openById(revDataId);
+    const revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('U3').getValue();
+    const revDataSs = SpreadsheetApp.openById(revDataId);
 
-    let studentRevDataSheet = revDataSheet.getSheetByName(studentName);
+    let studentRevDataSheet = revDataSs.getSheetByName(studentName);
     if (!studentRevDataSheet) {
       try {
         studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
       } catch (err) {
-        let ui = SpreadsheetApp.getUi();
-        let continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
+        const ui = SpreadsheetApp.getUi();
+        const continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
 
         if (continueScript === ui.Button.NO) {
-          let htmlOutput = HtmlService.createHtmlOutput('<p>Please use a unique name for the new student or delete/rename the "'+ studentName + '" sheet from your <a href="https://docs.google.com/spreadsheets/d/' + revDataId + '">Rev sheet data</a></p>')
+          const htmlOutput = HtmlService.createHtmlOutput('<p>Please use a unique name for the new student or delete/rename the "'+ studentName + '" sheet from your <a href="https://docs.google.com/spreadsheets/d/' + revDataId + '">Rev sheet data</a></p>')
             .setWidth(400);
           SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Duplicate student name');
           return;
@@ -295,16 +299,27 @@ function linkSheets(folderId, studentName='', prepType='all') {
       }
     }
 
-    let studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
+    const studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
     studentQBSheet.getRange('U2').setValue(studentName);
     studentQBSheet.getRange('U4').setValue(satSheetIds.admin);
+    studentQBSheet.getRange('U8').setValue(homeworkSsId);
 
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
+    satAdminSheet.getSheetByName('Rev sheet backend').getRange('U8').setValue(homeworkSsId);
+
+    if (homeworkSsId) {
+      const homeworkSs = SpreadsheetApp.openById(homeworkSsId);
+      homeworkSs.getSheetByName('Info').getRange('C16').setValue(satSheetIds.student);
+    }
   }
 
   if (actSheetIds.student && actSheetIds.admin) {
-    let actAdminSheet = SpreadsheetApp.openById(actSheetIds.admin);
+    const actAdminSheet = SpreadsheetApp.openById(actSheetIds.admin);
     actAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(actSheetIds.student);
+    if (homeworkSsId) {
+      const homeworkSs = SpreadsheetApp.openById(homeworkSsId);
+      homeworkSs.getSheetByName('Info').getRange('C17').setValue(actSheetIds.student);
+    }
   }
 }
 
