@@ -16,14 +16,16 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'sat');
-  linkSheets(newFolderId, studentName, 'sat');
+  
+  const studentData = linkSheets(newFolderId, studentName, 'sat');
+  studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'SAT folder created successfully');
 
-  return studentName;
+  return studentData;
 }
 
 function NewActFolder(sourceFolderId, parentFolderId) {
@@ -44,14 +46,16 @@ function NewActFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'act');
-  linkSheets(newFolderId, studentName, 'act');
+
+  const studentData = linkSheets(newFolderId, studentName, 'act');
+  studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'ACT folder created successfully');
 
-  return studentName;
+  return studentData;
 }
 
 function NewTestPrepFolder(sourceFolderId, parentFolderId) {
@@ -72,14 +76,16 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'all');
-  linkSheets(newFolderId, studentName, 'all');
+  
+  const studentData = linkSheets(newFolderId, studentName, 'all');
+  studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Test prep folder created successfully');
 
-  return studentName;
+  return studentData;
 }
 
 function getFolderIds(sourceFolderId, parentFolderId) {
@@ -198,7 +204,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
   }
 }
 
-function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null) {
+function linkSheets(folderId, studentName='', prepType='all') {
   const folder = DriveApp.getFolderById(folderId);
   const files = folder.getFiles();
   const subFolders = folder.getFolders();
@@ -215,9 +221,6 @@ function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null)
     }
     else if (filename.includes('ACT') && prepType !== 'sat') {
       actFiles.push({ filename, fileId });
-    }
-    else if (filename === `homework - ${studentName}`) {
-      homeworkSsId = fileId;
     }
   }
 
@@ -262,14 +265,14 @@ function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null)
 
   while (subFolders.hasNext()) {
     var subFolder = subFolders.next();
-    linkSheets(subFolder.getId(), studentName, prepType, homeworkSsId);
-    if (prepType === 'all' && satSheetIds.student && satSheetIds.admin && actSheetIds.student && actSheetIds.admin && homeworkSsId) {
+    linkSheets(subFolder.getId(), studentName, prepType);
+    if (prepType === 'all' && satSheetIds.student && satSheetIds.admin && actSheetIds.student && actSheetIds.admin) {
       break;
     }
-    else if (prepType === 'sat' && satSheetIds.student && satSheetIds.admin && homeworkSsId) {
+    else if (prepType === 'sat' && satSheetIds.student && satSheetIds.admin) {
       break;
     }
-    else if (prepType === 'act' && actSheetIds.student && actSheetIds.admin && homeworkSsId) {
+    else if (prepType === 'act' && actSheetIds.student && actSheetIds.admin) {
       break;
     }
   }
@@ -285,7 +288,7 @@ function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null)
     let studentRevDataSheet = revDataSs.getSheetByName(studentName);
     if (!studentRevDataSheet) {
       try {
-        studentRevDataSheet = revDataSheet.getSheetByName('Template').copyTo(revDataSheet).setName(studentName);
+        studentRevDataSheet = revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
       } catch (err) {
         const ui = SpreadsheetApp.getUi();
         const continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
@@ -302,25 +305,25 @@ function linkSheets(folderId, studentName='', prepType='all', homeworkSsId=null)
     const studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
     studentQBSheet.getRange('U2').setValue(studentName);
     studentQBSheet.getRange('U4').setValue(satSheetIds.admin);
-    studentQBSheet.getRange('U8').setValue(homeworkSsId);
+    
 
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
-    satAdminSheet.getSheetByName('Rev sheet backend').getRange('U8').setValue(homeworkSsId);
-
-    if (homeworkSsId) {
-      const homeworkSs = SpreadsheetApp.openById(homeworkSsId);
-      homeworkSs.getSheetByName('Info').getRange('C16').setValue(satSheetIds.student);
-    }
   }
 
   if (actSheetIds.student && actSheetIds.admin) {
     const actAdminSheet = SpreadsheetApp.openById(actSheetIds.admin);
     actAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(actSheetIds.student);
-    if (homeworkSsId) {
-      const homeworkSs = SpreadsheetApp.openById(homeworkSsId);
-      homeworkSs.getSheetByName('Info').getRange('C17').setValue(actSheetIds.student);
-    }
   }
+
+  const studentData = {
+    name: studentName,
+    satAdminSsId: satSheetIds.admin,
+    satStudentSsId: satSheetIds.student,
+    actAdminSsId: actSheetIds.admin,
+    actStudentSsId: actSheetIds.student,
+  }
+
+  return studentData;
 }
 
 

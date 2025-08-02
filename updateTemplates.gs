@@ -536,17 +536,17 @@ function findClientFileIds() {
   const studentsJSON = studentsStr ? JSON.parse(studentsStr) : [];
 
   const client = {
-    'name': clientName,
-    'satAdminSsId': ss.getId(),
-    'satStudentSsId': ss.getSheetByName('Student responses').getRange('B1').getValue(),
-    'satAdminDataId': satAdminDataId,
-    'satStudentDataId': satStudentDataId,
-    'revDataId': revDataId,
-    'studentsFolderId': studentsFolderId,
-    'studentsDataJSON': studentsJSON
+    name: clientName,
+    satAdminSsId: ss.getId(),
+    satStudentSsId: ss.getSheetByName('Student responses').getRange('B1').getValue(),
+    satAdminDataId: satAdminDataId,
+    satStudentDataId: satStudentDataId,
+    revDataId: revDataId,
+    studentsFolderId: studentsFolderId,
+    studentsDataJSON: studentsJSON
   }
 
-  const students = findStudentFileIds(client);
+  const students = getStudentFileIds(client);
   studentsStr = JSON.stringify(students);
   clientData[8][1] = studentsStr;
 
@@ -555,12 +555,12 @@ function findClientFileIds() {
   return client;
 }
 
-function findStudentFileIds(
+ function getStudentFileIds(
   client={
-    'index': null,
-    'name': null,
-    'studentsFolderId': null,
-    'studentsDataJSON': null
+    index: null,
+    name: null,
+    studentsFolderId: null,
+    studentsDataJSON: null
   })
   {
   const index = client.index || 0;
@@ -592,7 +592,7 @@ function findStudentFileIds(
       else {
         Logger.log(`Adding ${studentFolderName} to students data`);
         const adminFiles = studentFolder.getFiles();
-        let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
+        let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
 
         while (adminFiles.hasNext()) {
           const adminFile = adminFiles.next();
@@ -610,13 +610,13 @@ function findStudentFileIds(
         }
 
         students.push({
-          'name': studentFolderName,
-          'folderId': studentFolderId,
-          'satAdminSsId': satAdminSsId,
-          'satStudentSsId': satStudentSsId,
-          'actAdminSsId': actAdminSsId,
-          'actStudentSsId': actStudentSsId,
-          'updateComplete': false
+          name: studentFolderName,
+          folderId: studentFolderId,
+          satAdminSsId: satAdminSsId,
+          satStudentSsId: satStudentSsId,
+          actAdminSsId: actAdminSsId,
+          actStudentSsId: actStudentSsId,
+          updateComplete: false
         })
       }
     }
