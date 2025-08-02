@@ -249,7 +249,8 @@ function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabW
             if (newStudentSheetValues.length === newStudentRanges[i].getNumRows()) {
               allNewAdminSheetValues.push({ range: newAdminRanges[i], values: newAdminSheetFormulas });
               allNewStudentSheetValues.push({ range: newStudentRanges[i], values: newStudentSheetValues });
-            } else {
+            } //
+            else {
               throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
             }
           }

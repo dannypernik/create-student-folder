@@ -411,7 +411,8 @@ function modifyRowsAtPositions(sheet, modifications) {
     if (mod.rows > 0) {
       // Insert rows if `rows` is positive
       sheet.insertRows(mod.position, mod.rows);
-    } else if (mod.rows < 0) {
+    } //
+    else if (mod.rows < 0) {
       // Delete rows if `rows` is negative
       sheet.deleteRows(mod.position, Math.abs(mod.rows));
     }
@@ -525,7 +526,8 @@ function findClientFileIds() {
 
     if (prompt.getSelectedButton() == ui.Button.CANCEL) {
       return;
-    } else {
+    } //
+else {
       studentsFolderId = getIdFromDriveUrl(response);
     }
 

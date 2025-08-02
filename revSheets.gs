@@ -50,7 +50,8 @@ function createRevSheet(sub, subIndex) {
 
     if (sub === 'RW') {
       subject = 'Reading & Writing';
-    } else {
+    } //
+    else {
       subject = 'Math';
     }
 
@@ -168,7 +169,8 @@ function createRevSheet(sub, subIndex) {
     } catch (err) {
       if (err.message.includes('Invalid argument')) {
         SpreadsheetApp.getUi().alert('Error: Image not found');
-      } else {
+      } //
+      else {
         SpreadsheetApp.getUi().alert(err);
       }
       return;
@@ -200,7 +202,8 @@ function createRevSheet(sub, subIndex) {
 
     if (!studentName) {
       var pdfName = sub + ' Rev sheet #' + newRevSheetNumber;
-    } else {
+    } //
+    else {
       var pdfName = sub + ' Rev sheet #' + newRevSheetNumber + ' for ' + studentName;
     }
 

@@ -8,7 +8,8 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
 
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
-  } else {
+  } //
+  else {
     studentName = prompt.getResponseText();
   }
 
@@ -16,7 +17,7 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'sat');
-  
+
   const studentData = linkSheets(newFolderId, studentName, 'sat');
   studentData.folderId = newFolderId;
 
@@ -38,7 +39,8 @@ function NewActFolder(sourceFolderId, parentFolderId) {
 
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
-  } else {
+  } //
+  else {
     studentName = prompt.getResponseText();
   }
 
@@ -68,7 +70,8 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
 
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;
-  } else {
+  } //
+  else {
     studentName = prompt.getResponseText();
   }
 
@@ -76,7 +79,7 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   copyFolder(sourceFolderId, newFolderId, studentName, 'all');
-  
+
   const studentData = linkSheets(newFolderId, studentName, 'all');
   studentData.folderId = newFolderId;
 
@@ -110,9 +113,11 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
 
   if (folderType.toLowerCase() === 'sat') {
     testType = 'SAT';
-  } else if (folderType.toLowerCase() === 'act') {
+  } //
+  else if (folderType.toLowerCase() === 'act') {
     testType = 'ACT';
-  } else {
+  } //
+  else {
     testType = 'Test';
   }
 
@@ -256,7 +261,8 @@ function linkSheets(folderId, studentName='', prepType='all') {
     if (filename.toLowerCase().includes('student answer sheet')) {
       actSheetIds.student = fileId;
       driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    } else if (filename.toLowerCase().includes('answer analysis')) {
+    } //
+    else if (filename.toLowerCase().includes('answer analysis')) {
       actSheetIds.admin = fileId;
       const ss = SpreadsheetApp.openById(fileId);
       ss.getSheetByName('Student responses').getRange('G1').setValue(studentName);
@@ -305,7 +311,7 @@ function linkSheets(folderId, studentName='', prepType='all') {
     const studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
     studentQBSheet.getRange('U2').setValue(studentName);
     studentQBSheet.getRange('U4').setValue(satSheetIds.admin);
-    
+
 
     satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSheetIds.student);
   }

@@ -84,7 +84,8 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
     let data = UrlFetchApp.fetch(url_base + url_ext, url_options);
     if (data.getResponseCode() !== 200) {
       return backoff(++i);
-    } else {
+    } //
+    else {
       return data;
     }
   })(1);
