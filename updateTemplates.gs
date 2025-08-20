@@ -80,8 +80,6 @@ function updateConceptData(adminSsId, studentSsId = null) {
           endRow = sh.getMaxRows() + 1;
         }
         rowsToAdd = concept['row'] + rowsNeeded - endRow;
-        Logger.log('rowsToAdd = concept["row"] + rowsNeeded - endRow')
-        Logger.log(`${rowsToAdd} = ${concept['row']} + ${rowsNeeded} - ${endRow}`)
 
         if (rowsToAdd > 0) {
           modifications.push({
@@ -96,7 +94,6 @@ function updateConceptData(adminSsId, studentSsId = null) {
           });
         }
       }
-      Logger.log(modifications);
       modifyRowsAtPositions(sh, modifications);
 
       const shNewRange = sh.getRange(subject['rowOffset'], 1, sh.getMaxRows() - subject['rowOffset'], sh.getMaxColumns());
@@ -104,6 +101,8 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const shNewVals = shNewRange.getValues();
       const shFormulas = shNewRange.getFormulas();
       const newConceptRows = shNewVals.map(row => row[1]);
+
+      Logger.log(conceptData);
 
       for (let level = 1; level < 4; level++) {
         const levelStartCol = (level - 1) * 4;
@@ -122,6 +121,7 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
             // Find the matching row in Question bank data
             const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
+            
             shNewVals[qRow] = []
             shNewVals[qRow][levelStartCol] = dataRow[0];
             shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
@@ -189,20 +189,22 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const ptDataFormula = ss.getSheetByName('Practice test data').getRange('A1').getFormula();
       const ptCommaIndex = ptDataFormula.indexOf(',');
       const ptFormulaStart = ptDataFormula.toString().slice(0,ptCommaIndex);
+      const revBackendSheet = ss.getSheetByName('Rev sheet backend');
 
-      const satAdminDataSsId = ss.getSheetByName('Rev sheet backend').getRange('U5').getValue();
-      const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
+      if (revBackendSheet) {
+        const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
+        const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
 
-      if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
-        const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
-        newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:H10000")')
+        if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
+          const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
+          newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:H10000")')
+        }
+
+        if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
+          const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
+          newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:J10000")')
+        }
       }
-
-      if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
-        const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
-        newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:J10000")')
-      }
-
 
       ss.getSheetByName('Question bank data').getRange('A1').setValue(qbFormulaStart + ', "' + qbDataSheetName + '!A1:H10000")');
       ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "' + ptDataSheetName + '!A1:J10000")');
