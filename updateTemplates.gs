@@ -121,7 +121,7 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
             // Find the matching row in Question bank data
             const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
-            
+
             shNewVals[qRow] = []
             shNewVals[qRow][levelStartCol] = dataRow[0];
             shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
@@ -217,8 +217,8 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
       const qbImportValue = qbImportCell.getFormula();
       const ptImportValue = ptImportCell.getFormula();
-      const newQbImportValue = qbImportValue.replace(/data.*?!/, `data updated ${dataLatestDate}!`);
-      const newPtImportValue = ptImportValue.replace(/data.*?!/, `data updated ${dataLatestDate}!`);
+      const newQbImportValue = qbImportValue.replace(/bank data.*?!/, `bank data updated ${dataLatestDate}!`);
+      const newPtImportValue = ptImportValue.replace(/test data.*?!/, `test data updated ${dataLatestDate}!`);
       qbImportCell.setFormula(newQbImportValue);
       ptImportCell.setFormula(newPtImportValue);
       Logger.log('sat student data URLs updated');
