@@ -142,7 +142,7 @@ function createRevSheet(sub, subIndex) {
 
     Logger.log('Rev folder logic complete');
 
-    revSheet.showSheet();
+    // revSheet.showSheet();
     revSheet.showRows(1, revSheet.getMaxRows());
     revBackend.getRange(2, 2 + subBackendOffset, revBackend.getLastRow() - 1).clear();
     revBackend.getRange(2, 2 + subBackendOffset).setValue('=RANDARRAY(counta(A$2:A))');
@@ -193,6 +193,8 @@ function createRevSheet(sub, subIndex) {
       revResponseSheet.getRange(4, revResponseSubjectColumn, lastFilledResponseRow - 3).copyTo(revResponseSheet.getRange(4, revResponseSubjectColumn), {contentsOnly: true});
     }
     revSheet.getRange('E1').setValue(newRevSheetNumber);
+    revSheet.getRange('E1:E').setFontColor('white');
+    revSheet.getRange('F1:F').setFontColor('#9900ff');
 
     // hide unneeded rows, column A+G
     revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
@@ -206,12 +208,6 @@ function createRevSheet(sub, subIndex) {
     else {
       var pdfName = sub + ' Rev sheet #' + newRevSheetNumber + ' for ' + studentName;
     }
-
-    //* Create worksheets
-    SpreadsheetApp.flush();
-    savePdf(ss, revSheet, pdfName, revSubjectFolderId);
-    Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
-    //*/
 
     try {
       revKeyFolder = DriveApp.getFolderById(revKeyFolderId);
@@ -233,6 +229,13 @@ function createRevSheet(sub, subIndex) {
       revKeySubjectFolderCell.setValue(revKeySubjectFolderId);
     }
 
+    //* Create worksheets
+    revSheet.showSheet();
+    SpreadsheetApp.flush();
+    savePdf(ss, revSheet, pdfName, revSubjectFolderId);
+    Logger.log(sub + ' Rev sheet #' + newRevSheetNumber + ' saved');
+    //*/
+
     //* Create answer keys
     revSheet.showColumns(3);
     revSheet.showColumns(6);
@@ -246,8 +249,8 @@ function createRevSheet(sub, subIndex) {
     var dataToCopy = revSheet.getRange(6, 1, row - 5, 2).getValues();
     revDataSheet.getRange(lastFilledQuestionRow + 1, revDataSubjectColumn, row - 5, 2).setValues(dataToCopy);
 
-    revSheet.showRows(1, revSheet.getMaxRows());
     revSheet.hideSheet();
+    revSheet.showRows(1, revSheet.getMaxRows());
 
     let htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + revSubjectFolderId + '" target="_blank" onclick="google.script.host.close()">' + sub + ' Rev sheet folder</a>')
       .setWidth(250) //optional

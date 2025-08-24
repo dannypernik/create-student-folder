@@ -1,3 +1,91 @@
+function getStudentData(adminFolderId, testType=null) {
+  const adminFolder = DriveApp.getFolderById(adminFolderId);
+  const adminSubfolders = adminFolder.getFolders();
+  const studentName = adminFolder.getName();
+  let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
+
+  // get testType from student folder name
+  if (!testType) {
+    while (adminSubfolders.hasNext()) {
+      const adminSubfolder = adminSubfolders.next();
+      const adminSubfolderName = adminSubfolder.getName();
+
+      if (adminSubfolderName.includes(studentName)) {
+        if (adminSubfolderName.includes('SAT')) {
+          testType = 'sat'
+        } //
+        else if (adminSubfolderName.includes('ACT')) {
+          testType = 'act'
+        }
+        break;
+      }
+    }
+  }
+  
+  const adminFiles = adminFolder.getFiles();
+  while (adminFiles.hasNext()) {
+    const adminFile = adminFiles.next();
+    const adminFileId = adminFile.getId();
+
+    if (testType != 'act' && adminFile.getName().toLowerCase().includes('sat admin answer analysis')) {
+      satAdminSsId = adminFileId;
+      const satAdminSs = SpreadsheetApp.openById(satAdminSsId);
+      satStudentSsId = satAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+
+      if (testType === 'sat') {
+        break;
+      }
+    }
+
+    if (testType != 'sat' && adminFile.getName().toLowerCase().includes('act admin answer analysis')) {
+      actAdminSsId = adminFileId;
+      actStudentSsId = actAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+
+      if (testType === 'act') {
+        break;
+      }
+    }
+
+    if ((satStudentSsId && actStudentSsId) || (testType === 'sat' && satStudentSsId) || (testType === 'act' && actStudentSsId)) {
+      break;
+    }
+  }
+
+  if (testType !== 'act') {
+
+  }
+
+  if (testType !== 'act') {
+    if (!satAdminSsId) {
+      satAdminSsId = findFirstFileIdBySubstring(adminFolderId, 'sat admin');
+    }
+    if (!satStudentSsId) {
+      satStudentSsId = findFirstFileIdBySubstring(adminFolderId, 'sat student');
+    }
+  }
+  
+  if (testType !== 'sat') {
+    if (!actAdminSsId) {
+      actAdminSsId = findFirstFileIdBySubstring(adminFolderId, 'act admin');
+    }
+    if (!actStudentSsId) {
+      actStudentSsId = findFirstFileIdBySubstring(adminFolderId, 'act student');
+    }
+  }
+
+  const studentData = {
+    name: studentName,
+    adminFolderId: adminFolderId,
+    satAdminSsId: satAdminSsId,
+    satStudentSsId: satStudentSsId,
+    actAdminSsId: actAdminSsId,
+    actStudentSsId: actStudentSsId,
+  }
+
+  return studentData;
+}
+
+
 function getSatTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
@@ -9,6 +97,43 @@ function getSatTestCodes() {
 
   return testCodes;
 }
+
+
+function getActTestData(testCode) {
+  // const completedEnglishCount = allData.filter((row) => row[0] === testCode && row[1] === 'English' && row[7] !== '').length;
+  // const completedMathCount = allData.filter((row) => row[0] === testCode && row[1] === 'Math' && row[7] !== '').length;
+  // const completedReadingCount = allData.filter((row) => row[0] === testCode && row[1] === 'Reading' && row[7] !== '').length;
+  // const completedScienceCount = allData.filter((row) => row[0] === testCode && row[1] === 'Science' && row[7] !== '').length;
+
+  // if (completedEnglishCount > 37 && completedMathCount > 30 && completedReadingCount > 20 && completedScienceCount > 20) {
+  let testSheet = ss.getSheetByName(testCode);
+
+  if (testSheet) {
+    const testHeaderValues = testSheet.getRange('A1:N3').getValues();
+    const eScore = parseInt(testHeaderValues[2][1]) || 0;
+    const mScore = parseInt(testHeaderValues[2][5]) || 0;
+    const rScore = parseInt(testHeaderValues[2][9]) || 0;
+    const sScore = parseInt(testHeaderValues[2][13]) || 0;
+    const totalScore = Math.round(Number(testHeaderValues[0][5])) || '';
+    const dateSubmitted = formatDateYYYYMMDD(fileList[i]['date']);
+    const isTestNew = testHeaderValues[0][6] !== 'Submitted on:';
+
+    if (totalScore) {
+      scores.push({
+        studentName: studentName,
+        test: testCode,
+        eScore: eScore,
+        mScore: mScore,
+        rScore: rScore,
+        sScore: sScore,
+        total: totalScore,
+        date: dateSubmitted,
+        isNew: isTestNew,
+      });
+    }
+  }
+}
+// }
 
 
 function getActTestCodes() {
@@ -192,6 +317,9 @@ function getLastFilledRow(sheet, col) {
 }
 
 function getIdFromDriveUrl(url) {
+  if (!url) {
+    return null;
+  }
   if (url.includes('/folders/')){
     id = url.split('/folders/')[1].split(/[/?]/)[0];
   }
@@ -252,4 +380,37 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
     .setName(pdfName + '.pdf');
   var folder = DriveApp.getFolderById(pdfFolderId);
   folder.createFile(blob);
+}
+
+/**
+ * Recursively search for the first file whose name includes a given substring (case-insensitive).
+ *
+ * @param {string} folderId - The ID of the root folder to search in.
+ * @param {string} substring - The substring to search for (case-insensitive).
+ * @return {string|null} The file ID of the first matching file, or null if none found.
+ */
+function findFirstFileIdBySubstring(folderId, substring) {
+  const folder = DriveApp.getFolderById(folderId);
+  const lowerSubstring = substring.toLowerCase();
+
+  // Check files in this folder
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getName().toLowerCase().includes(lowerSubstring)) {
+      return file.getId(); // return file ID immediately when found
+    }
+  }
+
+  // Recurse into subfolders
+  const subfolders = folder.getFolders();
+  while (subfolders.hasNext()) {
+    const subfolder = subfolders.next();
+    const foundId = findFirstFileIdBySubstring(subfolder.getId(), substring);
+    if (foundId) {
+      return foundId; // bubble up the first match
+    }
+  }
+
+  return null; // nothing found
 }

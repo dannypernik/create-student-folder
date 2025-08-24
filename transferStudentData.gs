@@ -19,18 +19,15 @@ function transferOldStudentData() {
       .setHeight(150);
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
 
-  let oldAdminSsId;
-  if (oldAdminDataUrl === '') {
+  let oldAdminSsId = getIdFromDriveUrl(oldAdminDataUrl);
+  if (!oldAdminSsId) {
     oldAdminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
-  else {
-    oldAdminSsId = getIdFromDriveUrl(oldAdminDataUrl);
-  }
 
-  transferStudentData(oldAdminSsId, startTime);
+  syncStudentData(oldAdminSsId, startTime);
 }
 
-function transferStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
+function syncStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const newStudentSs = SpreadsheetApp.openById(newStudentSsId);

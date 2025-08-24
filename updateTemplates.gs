@@ -246,6 +246,79 @@ function updateConceptData(adminSsId, studentSsId = null) {
   }
 }
 
+function updateConceptDataAllSpreadsheets() {
+  const templateSs = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const prompt = ui.prompt('URL of Drive folder where student folders are located (leave blank to use the parent folder of the template folder, which is where student folders are saved by default)');
+  const response = prompt.getResponseText();
+  let studentsFolderId = getIdFromDriveUrl(response);
+
+  if (!studentsFolderId) {
+    const templateSsId = templateSs.getId();
+    const templateParentFolder = DriveApp.getFileById(templateSsId).getParents().next().getParents().next();
+    studentsFolderId = templateParentFolder.getId();
+  }
+
+  const studentsFolder = DriveApp.getFolderById(studentsFolderId);
+  const adminFolders = studentsFolder.getFolders();
+
+  const satAdminDataSsId = templateSs.getSheetByName('Rev sheet backend').getRange('U5').getValue();
+  const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
+  const allStudentDataCell = satAdminDataSs.getSheetByName('Question bank data').getRange('U2');
+  const allStudentDataValue = allStudentDataCell.getValue();
+  const allStudentData = allStudentDataValue ? JSON.parse(allStudentDataValue) : [];
+  const allCompletedAdminFolderIds = allStudentData.map(s => s.adminFolderId);
+
+  const adminFolderList = [];
+  while (adminFolders.hasNext()) {
+    const adminFolder = adminFolders.next();
+    adminFolderList.push(adminFolder);
+  }
+  adminFolderList.sort((a, b) => a.getName().localeCompare(b.getName()));
+  
+  for (adminFolder of adminFolderList) {
+    Logger.log(`Starting ${adminFolder.getName()}`);
+    const adminFolderIndex = adminFolderList.findIndex(folder => folder.getId() === adminFolder.getId());
+    const studentData = getStudentData(adminFolder.getId(), 'sat');
+
+    if (!allCompletedAdminFolderIds.includes(studentData.adminFolderId)) {
+      if (studentData.satAdminSsId) {
+        updateConceptData(studentData.satAdminSsId, studentData.satStudentSsId);
+        allStudentData.push(studentData);
+      }
+      else {
+        Logger.log(`Completed update for ${studentData.name}`);
+        var htmlOutput = HtmlService.createHtmlOutput(`${adminFolderIndex + 1} of ${adminFolderList.length} complete`)
+          .setWidth(250)
+          .setHeight(50);
+        SpreadsheetApp.getUi().showModalDialog(htmlOutput, `No SAT admin sheet found for ${studentData.name}`);
+      }
+      const allStudentDataStr = JSON.stringify(allStudentData);
+      allStudentDataCell.setValue(allStudentDataStr);
+
+      Logger.log(`Completed update for ${studentData.name}`);
+      var htmlOutput = HtmlService.createHtmlOutput(`${adminFolderIndex + 1} of ${adminFolderList.length} complete`)
+        .setWidth(250)
+        .setHeight(50);
+      SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Update complete for ${studentData.name}`);
+    }
+    else {
+      Logger.log(`${studentData.name} already completed`);
+    }
+  }
+  ui.alert(`Update complete for all students in ${studentsFolder.getName()}`)
+}
+
+function updateSatWorksheetLinks() {
+  const templateSs = SpreadsheetApp.getActiveSpreadsheet();
+  const revBackendSheet = templateSs.revBackendSheet('Rev sheet backend');
+  const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
+  const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
+  const linksImportCell = satAdminDataSs.getSheetByName('Links').getRange('A1');
+  linksImportValue = `=importrange("1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE","Links!I1:O50")")`;
+
+  linksImportCell.setValue(linksImportValue);
+}
 
 function modifyRowsAtPositions(sheet, modifications) {
   // Sort modifications in descending order of positions to avoid shifting issues
@@ -393,7 +466,7 @@ else {
     studentsDataJSON: studentsJSON
   }
 
-  const students = getStudentFileIds(client);
+  const students = getAllStudentFileIds(client);
   studentsStr = JSON.stringify(students);
   clientData[8][1] = studentsStr;
 
@@ -402,7 +475,7 @@ else {
   return client;
 }
 
- function getStudentFileIds(
+ function getAllStudentFileIds(
   client={
     index: null,
     name: null,

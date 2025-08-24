@@ -1,5 +1,6 @@
 const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
 const dataLatestDate = '08/2025';
+const isUpdateAvailable = true;
 
 const cats = [
   'Area and volume',
