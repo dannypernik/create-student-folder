@@ -52,24 +52,20 @@ function getStudentData(adminFolderId, testType=null) {
   }
 
   if (testType !== 'act') {
-
-  }
-
-  if (testType !== 'act') {
     if (!satAdminSsId) {
-      satAdminSsId = findFirstFileIdBySubstring(adminFolderId, 'sat admin');
+      satAdminSsId = findFirstIdBySubstring(adminFolderId, 'sat admin answer', 'file');
     }
     if (!satStudentSsId) {
-      satStudentSsId = findFirstFileIdBySubstring(adminFolderId, 'sat student');
+      satStudentSsId = findFirstIdBySubstring(adminFolderId, 'sat student answer', 'file');
     }
   }
   
   if (testType !== 'sat') {
     if (!actAdminSsId) {
-      actAdminSsId = findFirstFileIdBySubstring(adminFolderId, 'act admin');
+      actAdminSsId = findFirstIdBySubstring(adminFolderId, 'act admin answer', 'file');
     }
     if (!actStudentSsId) {
-      actStudentSsId = findFirstFileIdBySubstring(adminFolderId, 'act student');
+      actStudentSsId = findFirstIdBySubstring(adminFolderId, 'act student answer', 'file');
     }
   }
 
@@ -383,34 +379,100 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
 }
 
 /**
- * Recursively search for the first file whose name includes a given substring (case-insensitive).
+ * Search for the first file/folder whose name includes a given substring.
  *
- * @param {string} folderId - The ID of the root folder to search in.
- * @param {string} substring - The substring to search for (case-insensitive).
- * @return {string|null} The file ID of the first matching file, or null if none found.
+ * @param {string} folderId - Root folder ID to search in.
+ * @param {string} substring - Case-insensitive substring to match.
+ * @param {"file"|"folder"|"both"} searchType - What to search for.
+ * @return {string|null} The ID of the first match, or null if none found.
  */
-function findFirstFileIdBySubstring(folderId, substring) {
+function findFirstIdBySubstring(folderId, substring, searchType='file') {
   const folder = DriveApp.getFolderById(folderId);
   const lowerSubstring = substring.toLowerCase();
 
-  // Check files in this folder
-  const files = folder.getFiles();
-  while (files.hasNext()) {
-    const file = files.next();
-    if (file.getName().toLowerCase().includes(lowerSubstring)) {
-      return file.getId(); // return file ID immediately when found
+  // Check files if requested
+  if (searchType === 'file' || searchType === 'both') {
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getName().toLowerCase().includes(lowerSubstring)) {
+        return file.getId();
+      }
     }
   }
 
-  // Recurse into subfolders
+  // Check folders if requested
   const subfolders = folder.getFolders();
   while (subfolders.hasNext()) {
     const subfolder = subfolders.next();
-    const foundId = findFirstFileIdBySubstring(subfolder.getId(), substring);
+
+    if (searchType === 'folder' || searchType === 'both') {
+      if (subfolder.getName().toLowerCase().includes(lowerSubstring)) {
+        return subfolder.getId();
+      }
+    }
+
+    // Recurse into subfolders
+    const foundId = findFirstIdBySubstring(subfolder.getId(), substring, searchType);
     if (foundId) {
-      return foundId; // bubble up the first match
+      return foundId;
     }
   }
 
   return null; // nothing found
+}
+
+function getScoreReportFolderId(adminSsId) {
+  const adminSs = SpreadsheetApp.openById(adminSsId);
+  const adminFolder = DriveApp.getFileById(adminSsId).getParents().next();
+  const adminSubfolders = adminFolder.getFolders();
+  const revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
+  let studentName, scoreReportFolder, scoreReportFolderId, studentFolder;
+  if (revBackendSheet) {
+    studentName = revBackendSheet.getRange('K2').getValue();
+    scoreReportFolderId = revBackendSheet.getRange('U9').getValue();
+    if (scoreReportFolderId) {
+      scoreReportFolder = DriveApp.getFolderById(scoreReportFolderId);
+    }
+  } //
+  else {
+    studentName = adminFolder.getName();
+  }
+
+  if (scoreReportFolder) {
+    return scoreReportFolderId;
+  } //
+  else {
+    while (adminSubfolders.hasNext()) {
+      const adminSubfolder = adminSubfolders.next();
+
+      if (adminSubfolder.getName().includes(studentName)) {
+        studentFolder = adminSubfolder;
+        break;
+      }
+    }
+
+    if (studentFolder) {
+      const studentSubfolders = studentFolder.getFolders();
+
+      while (studentSubfolders.hasNext()) {
+        const studentSubfolder = studentSubfolders.next();
+
+        if (studentSubfolder.getName().toLowerCase().includes('score report')) {
+          scoreReportFolderId = studentSubfolder.getId();
+          break;
+        } //
+        else {
+          scoreReportFolderId = studentFolder.createFolder('Score reports').getId();
+          break;
+        }
+      }
+    } //
+    else {
+      scoreReportFolderId = adminFolder.createFolder('Score reports').getId();
+    }
+
+    revBackendSheet.getRange('T9:U9').setValues([['Score report folder ID:', scoreReportFolderId]]);
+    return scoreReportFolderId;
+  }
 }

@@ -1,5 +1,6 @@
 function createSatScoreReport() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
   const testCode = ui.prompt('Test code').getResponseText().toUpperCase();
   const testSheet = ss.getSheetByName(testCode);
 
@@ -30,48 +31,27 @@ function createSatScoreReport() {
   }
 
   createSatScoreReportPdf(ss.getId(), testData);
+
 }
 
 
-async function createSatScoreReportPdf(spreadsheetId, currentTestData) {
+async function createSatScoreReportPdf(adminSsId, currentTestData) {
   try {
-    const spreadsheet = spreadsheetId ? SpreadsheetApp.openById(spreadsheetId) : SpreadsheetApp.getActiveSpreadsheet();
-    spreadsheetId = spreadsheetId ? spreadsheetId : spreadsheet.getId();
-    const ssName = spreadsheet.getName();
-    const studentName = ssName.slice(ssName.indexOf('-') + 2);
-    const practiceDataSheet = spreadsheet.getSheetByName('Practice test data');
-    let scoreReportFolderId;
+    const adminSs = adminSsId ? SpreadsheetApp.openById(adminSsId) : SpreadsheetApp.getActiveSpreadsheet();
+    adminSsId = adminSsId ? adminSsId : adminSs.getId();
+    const adminSsName = adminSs.getName();
+    const studentName = adminSsName.slice(adminSsName.indexOf('-') + 2);
 
-    if (practiceDataSheet.getRange('V1').getValue() === 'Score report folder ID:' && practiceDataSheet.getRange('W1').getValue() !== '') {
-      scoreReportFolderId = practiceDataSheet.getRange('W1').getValue();
-    } //
-    else {
-      var parentId = DriveApp.getFileById(spreadsheetId).getParents().next().getId();
-      const subfolderIds = getSubFolderIdsByFolderId(parentId);
-
-      for (let i in subfolderIds) {
-        let subfolderId = subfolderIds[i];
-        let subfolder = DriveApp.getFolderById(subfolderId);
-        let subfolderName = subfolder.getName();
-        if (subfolderName.toLowerCase().includes('score report')) {
-          scoreReportFolderId = subfolder.getId();
-        }
-      }
-    }
-
-    if (!scoreReportFolderId) {
-      scoreReportFolderId = DriveApp.getFolderById(parentId).createFolder('Score reports').getId();
-      practiceDataSheet.getRange('V1:W1').setValues([['Score report folder ID:', scoreReportFolderId]]);
-    }
+    const scoreReportFolderId = getScoreReportFolderId(adminSsId);
 
     const pdfName = currentTestData.test + ' answer analysis - ' + studentName + '.pdf';
-    const answerSheetId = spreadsheet.getSheetByName(currentTestData.test).getSheetId();
-    const analysisSheetId = spreadsheet.getSheetByName(currentTestData.test + ' analysis').getSheetId();
+    const answerSheetId = adminSs.getSheetByName(currentTestData.test).getSheetId();
+    const analysisSheetId = adminSs.getSheetByName(currentTestData.test + ' analysis').getSheetId();
 
     Logger.log(`Starting ${currentTestData.test} score report for ${studentName}`);
 
-    const answerFileId = savePdfSheet(spreadsheetId, answerSheetId, studentName);
-    const analysisFileId = savePdfSheet(spreadsheetId, analysisSheetId, studentName);
+    const answerFileId = savePdfSheet(adminSsId, answerSheetId, studentName);
+    const analysisFileId = savePdfSheet(adminSsId, analysisSheetId, studentName);
 
     const fileIdsToMerge = [analysisFileId, answerFileId];
 
@@ -80,7 +60,7 @@ async function createSatScoreReportPdf(spreadsheetId, currentTestData) {
     const pdfFile = DriveApp.getFolderById(scoreReportFolderId).createFile(mergedBlob).setName(pdfName);
     const pdfUrl = pdfFile.getUrl();
 
-    var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}">${currentTestData.test} score report</a>`)
+    var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}" target="_blank">${currentTestData.test} score report</a>`)
       .setWidth(250) //optional
       .setHeight(100); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, `PDF complete`);
@@ -126,50 +106,13 @@ async function createActScoreReportPdf(spreadsheetId, currentTestData) {
     const ssName = spreadsheet.getName();
     const studentName = ssName.slice(ssName.indexOf('-') + 2);
     const dataSheet = spreadsheet.getSheetByName('Data');
-    let scoreReportFolderId, studentFolderId;
+    let scoreReportFolderId;
 
     if (dataSheet.getRange('V1').getValue() === 'Score report folder ID:' && dataSheet.getRange('W1').getValue() !== '') {
       scoreReportFolderId = dataSheet.getRange('W1').getValue();
     } //
     else {
-      var parentFolderId = DriveApp.getFileById(spreadsheetId).getParents().next().getId();
-      const subfolderIds = getSubFolderIdsByFolderId(parentFolderId);
-
-      for (let i in subfolderIds) {
-        let subfolderId = subfolderIds[i];
-        let subfolder = DriveApp.getFolderById(subfolderId);
-        let subfolderName = subfolder.getName();
-        if (subfolderName.toLowerCase().includes('score report')) {
-          scoreReportFolderId = subfolderId;
-          break;
-        } //
-        else if (subfolderName.includes(studentName)) {
-          studentFolderId = subfolderId;
-        }
-      }
-
-      if (studentFolderId && !scoreReportFolderId) {
-        const subSubfolderIds = getSubFolderIdsByFolderId(studentFolderId);
-
-        for (let id in subSubfolderIds) {
-          let subSubfolderId = subSubfolderIds[id];
-          let subSubfolder = DriveApp.getFolderById(subSubfolderId);
-          let subSubfolderName = subSubfolder.getName();
-
-          if (subSubfolderName.toLowerCase().includes('score report')) {
-            scoreReportFolderId = subfolderId;
-            break;
-          }
-        }
-
-        if (!scoreReportFolderId) {
-          scoreReportFolderId = DriveApp.getFolderById(studentFolderId).createFolder('Score reports').getId();
-        }
-      }
-    }
-
-    if (!scoreReportFolderId) {
-      scoreReportFolderId = DriveApp.getFolderById(parentFolderId).createFolder('Score reports').getId();
+      scoreReportFolderId = getScoreReportFolderId(spreadsheetId);
     }
 
     if (dataSheet.getRange('W1').getValue() !== scoreReportFolderId) {
