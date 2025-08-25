@@ -2,6 +2,15 @@ function createSatScoreReport() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const testCode = ui.prompt('Test code').getResponseText().toUpperCase();
+  const testCodes = getSatTestCodes();
+
+  if (!testCodes.includes(testCode)) {
+    var htmlOutput = HtmlService.createHtmlOutput(`${testCode} is not a valid test code`)
+      .setWidth(250) //optional
+      .setHeight(100); //optional
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
+    return;
+  }
   const testSheet = ss.getSheetByName(testCode);
 
   if (testSheet) {
@@ -55,10 +64,10 @@ async function createSatScoreReportPdf(adminSsId, currentTestData) {
 
     const fileIdsToMerge = [analysisFileId, answerFileId];
 
-    const mergedFile = await mergePDFs(fileIdsToMerge, scoreReportFolderId, pdfName);
-    const mergedBlob = mergedFile.getBlob();
-    const pdfFile = DriveApp.getFolderById(scoreReportFolderId).createFile(mergedBlob).setName(pdfName);
-    const pdfUrl = pdfFile.getUrl();
+    const mergedPdf = await mergePDFs(fileIdsToMerge, scoreReportFolderId, pdfName);
+    // const mergedBlob = mergedFile.getBlob();
+    // const pdfFile = DriveApp.getFolderById(scoreReportFolderId).createFile(mergedBlob).setName(pdfName);
+    const pdfUrl = mergedPdf.getUrl();
 
     var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}" target="_blank">${currentTestData.test} score report</a>`)
       .setWidth(250) //optional
@@ -238,7 +247,7 @@ async function mergePDFs(fileIds, destinationFolderId, name = 'merged.pdf', atte
   const destinationFolder = DriveApp.getFolderById(destinationFolderId);
   const mergedFile = destinationFolder.createFile(mergedBlob).setName(name);
 
-  // fileIds.forEach((id) => DriveApp.getFileById(id).setTrashed(true));
+  fileIds.forEach((id) => DriveApp.getFileById(id).setTrashed(true));
 
   return mergedFile;
 }
