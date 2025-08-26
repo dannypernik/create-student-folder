@@ -95,13 +95,14 @@ function getSatTestCodes() {
 }
 
 
-function getActTestData(testCode) {
+function getActTestData(ssId, testCode) {
   // const completedEnglishCount = allData.filter((row) => row[0] === testCode && row[1] === 'English' && row[7] !== '').length;
   // const completedMathCount = allData.filter((row) => row[0] === testCode && row[1] === 'Math' && row[7] !== '').length;
   // const completedReadingCount = allData.filter((row) => row[0] === testCode && row[1] === 'Reading' && row[7] !== '').length;
   // const completedScienceCount = allData.filter((row) => row[0] === testCode && row[1] === 'Science' && row[7] !== '').length;
 
   // if (completedEnglishCount > 37 && completedMathCount > 30 && completedReadingCount > 20 && completedScienceCount > 20) {
+  const ss = SpreadsheetApp.openById(ssId);
   let testSheet = ss.getSheetByName(testCode);
 
   if (testSheet) {
@@ -111,22 +112,19 @@ function getActTestData(testCode) {
     const rScore = parseInt(testHeaderValues[2][9]) || 0;
     const sScore = parseInt(testHeaderValues[2][13]) || 0;
     const totalScore = Math.round(Number(testHeaderValues[0][5])) || '';
-    const dateSubmitted = formatDateYYYYMMDD(fileList[i]['date']);
-    const isTestNew = testHeaderValues[0][6] !== 'Submitted on:';
+    const dateSubmitted = formatDateYYYYMMDD(testHeaderValues[0][7]);
+    const isTestNew = dateSubmitted;
 
-    if (totalScore) {
-      scores.push({
-        studentName: studentName,
-        test: testCode,
-        eScore: eScore,
-        mScore: mScore,
-        rScore: rScore,
-        sScore: sScore,
-        total: totalScore,
-        date: dateSubmitted,
-        isNew: isTestNew,
-      });
-    }
+    return {
+      test: testCode,
+      eScore: eScore,
+      mScore: mScore,
+      rScore: rScore,
+      sScore: sScore,
+      total: totalScore,
+      date: dateSubmitted,
+      isNew: isTestNew,
+    };
   }
 }
 // }
@@ -304,6 +302,34 @@ function sortActTestSheets(ssId, testCodes, isAdminSheet=true) {
 }
 
 
+function getActPageBreakRow(sheet) {
+  const grandColData = sheet
+    .getRange(1, 2, 111)
+    .getValues()
+    .map((row) => row[0]);
+  const mathColData = sheet
+    .getRange(1, 3, 111)
+    .getValues()
+    .map((row) => row[0]);
+
+  const grandTotalIndex = grandColData.indexOf('Grand Total');
+  if (0 < grandTotalIndex && grandTotalIndex < 80) {
+    sheet.hideRows(grandTotalIndex + 2, 111);
+    SpreadsheetApp.flush();
+    return 80;
+  }
+
+  const mathTotalIndex = mathColData.indexOf('Math Total');
+  if (0 < mathTotalIndex && mathTotalIndex < 80) {
+    Logger.log(`Page break for analysis sheet at row ${mathTotalIndex + 1}`);
+    return mathTotalIndex + 1;
+  } //
+  else {
+    return 80;
+  }
+}
+
+
 function getLastFilledRow(sheet, col) {
   const lastRow = sheet.getLastRow();
   const allVals = sheet.getRange(1, col, lastRow).getValues();
@@ -336,6 +362,19 @@ function getIdFromDriveUrl(url) {
 function isEmptyFolder(folderId) {
   const folder = DriveApp.getFolderById(folderId);
   return !folder.getFiles().hasNext() && !folder.getFolders().hasNext();
+}
+
+
+function formatDateYYYYMMDD(dateStr) {
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${yyyy}-${mm}-${dd}`;
+  }
+   
+   return null;
 }
 
 
@@ -422,21 +461,30 @@ function findFirstIdBySubstring(folderId, substring, searchType='file') {
   return null; // nothing found
 }
 
-function getScoreReportFolderId(adminSsId) {
+function getScoreReportFolderId(adminSsId, ssType='sat') {
   const adminSs = SpreadsheetApp.openById(adminSsId);
   const adminFolder = DriveApp.getFileById(adminSsId).getParents().next();
   const adminSubfolders = adminFolder.getFolders();
-  const revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
   let studentName, scoreReportFolder, scoreReportFolderId, studentFolder;
-  if (revBackendSheet) {
-    studentName = revBackendSheet.getRange('K2').getValue();
-    scoreReportFolderId = revBackendSheet.getRange('U9').getValue();
-    if (scoreReportFolderId) {
-      scoreReportFolder = DriveApp.getFolderById(scoreReportFolderId);
+
+  if (ssType === 'sat') {
+    const revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
+    if (revBackendSheet) {
+      studentName = revBackendSheet.getRange('K2').getValue();
+      scoreReportFolderId = revBackendSheet.getRange('U9').getValue();
     }
   } //
-  else {
+  else if (ssType === 'act') {
+    const dataSheet = adminSs.getSheetByName('Data');
+    scoreReportFolderId = dataSheet.getRange('W1').getValue();
+  }
+
+  if (!studentName) {
     studentName = adminFolder.getName();
+  }
+
+  if (scoreReportFolderId) {
+    scoreReportFolder = DriveApp.getFolderById(scoreReportFolderId);
   }
 
   if (scoreReportFolder) {
@@ -471,8 +519,44 @@ function getScoreReportFolderId(adminSsId) {
     else {
       scoreReportFolderId = adminFolder.createFolder('Score reports').getId();
     }
-
-    revBackendSheet.getRange('T9:U9').setValues([['Score report folder ID:', scoreReportFolderId]]);
-    return scoreReportFolderId;
   }
+  
+  if (ssType === 'sat') {
+    revBackendSheet.getRange('T9:U9').setValues([['Score report folder ID:', scoreReportFolderId]]);
+  }
+  else if (ssType === 'act') {
+    dataSheet.getRange('V1:W1').setValues([['Score report folder ID:', scoreReportFolderId]]);
+  }
+  
+  Logger.log(scoreReportFolderId);
+  return scoreReportFolderId;
+}
+
+
+function errorNotification(error, ssId) {
+  
+  // const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
+  const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
+    .setWidth(250) //optional
+    .setHeight(100); //optional
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
+
+  // const ss = SpreadsheetApp.openById(ssId);
+  // const editorEmails = []
+  // ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
+
+  // const message = `
+  //   <p>Error details: ${error.stack}</p>
+  //   <p><a href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank">${ss.getName()}</a></p>
+  //   <p>Editors: ${editorEmails}</p>
+  // `
+
+  // MailApp.sendEmail({
+  //   to: ADMIN_EMAIL,
+  //   subject: `Spreadsheet error: ${error.message}`,
+  //   htmlBody: message
+  // });
+
+  Logger.log(error.message + '\n\n' + error.stack);
+  throw new Error(error.message + '\n\n' + error.stack);
 }

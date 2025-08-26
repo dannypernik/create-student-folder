@@ -1,4 +1,5 @@
 const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
+const ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
 dataLatestDate = '08/2025';
 isUpdateAvailable = true;
 

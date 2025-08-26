@@ -40,16 +40,22 @@ function createSatScoreReport() {
   }
 
   createSatScoreReportPdf(ss.getId(), testData);
-
 }
 
 
-async function createSatScoreReportPdf(adminSsId, currentTestData) {
+async function createSatScoreReportPdf(adminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), currentTestData) {
   try {
-    const adminSs = adminSsId ? SpreadsheetApp.openById(adminSsId) : SpreadsheetApp.getActiveSpreadsheet();
-    adminSsId = adminSsId ? adminSsId : adminSs.getId();
-    const adminSsName = adminSs.getName();
-    const studentName = adminSsName.slice(adminSsName.indexOf('-') + 2);
+    const adminSs = SpreadsheetApp.openById(adminSsId);
+    const revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
+    let studentName;
+
+    if (revBackendSheet) {
+      studentName = revBackendSheet.getRange('K2').getValue();
+    } //
+    else {
+      const adminSsName = adminSs.getName();
+      studentName = adminSsName.slice(adminSsName.indexOf('-') + 2);
+    }
 
     const scoreReportFolderId = getScoreReportFolderId(adminSsId);
 
@@ -71,13 +77,12 @@ async function createSatScoreReportPdf(adminSsId, currentTestData) {
 
     var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}" target="_blank">${currentTestData.test} score report</a>`)
       .setWidth(250) //optional
-      .setHeight(100); //optional
+      .setHeight(50); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, `PDF complete`);
 
     Logger.log(studentName + ' ' + currentTestData.test + ' score report complete');
   } catch (err) {
-    Logger.log(err.stack);
-    throw new Error(err.message + '\n\n' + err.stack);
+    errorNotification(err, adminSsId)
   }
 }
 
@@ -86,20 +91,30 @@ function createActScoreReport() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const testCode = ui.prompt('Test code').getResponseText().toUpperCase();
-  const testSheet = ss.getSheetByName(testCode);
+  const testCodes = getActTestCodes();
 
+  if (!testCodes.includes(testCode)) {
+    var htmlOutput = HtmlService.createHtmlOutput(`${testCode} is not a valid test code`)
+      .setWidth(250) //optional
+      .setHeight(100); //optional
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
+
+    return;
+  }
+
+  const testSheet = ss.getSheetByName(testCode);
   if (testSheet) {
-    const testData = getActTestData(testCode);
+    const testData = getActTestData(ss.getId(), testCode);
 
     if (!testData.total) {
-      const response = ui.prompt(`Total score is missing from F1 of sheet ${testData.test}, suggesting that the test is incomplete. Proceed?`, ui.ButtonSet.YES_NO)
+      const response = ui.alert(`Total score is missing from F1 of sheet ${testData.test}, suggesting that the test is incomplete. Proceed?`, ui.ButtonSet.YES_NO)
 
       if (response.getSelectedButton() === ui.Button.NO) {
         return;
       }
-
-      createActScoreReportPdf(ss.getId(), testData);
     }
+    
+    createActScoreReportPdf(ss.getId(), testData);
   }
   else {
     ui.alert(`${testCode} sheet not found`);
@@ -107,35 +122,26 @@ function createActScoreReport() {
   }  
 }
 
-
-async function createActScoreReportPdf(spreadsheetId, currentTestData) {
+async function createActScoreReportPdf(adminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), currentTestData) {
   try {
-    const spreadsheet = spreadsheetId ? SpreadsheetApp.openById(spreadsheetId) : SpreadsheetApp.getActiveSpreadsheet();
-    spreadsheetId = spreadsheetId ? spreadsheetId : spreadsheet.getId();
-    const ssName = spreadsheet.getName();
-    const studentName = ssName.slice(ssName.indexOf('-') + 2);
-    const dataSheet = spreadsheet.getSheetByName('Data');
-    let scoreReportFolderId;
+    const adminSs = SpreadsheetApp.openById(adminSsId);
 
-    if (dataSheet.getRange('V1').getValue() === 'Score report folder ID:' && dataSheet.getRange('W1').getValue() !== '') {
-      scoreReportFolderId = dataSheet.getRange('W1').getValue();
-    } //
-    else {
-      scoreReportFolderId = getScoreReportFolderId(spreadsheetId);
+    let studentName = adminSs.getSheetByName('Student responses').getRange('G1').getValue();
+    if (!studentName) {
+      const ssName = adminSs.getName();
+      studentName = ssName.slice(ssName.indexOf('-') + 2);
     }
 
-    if (dataSheet.getRange('W1').getValue() !== scoreReportFolderId) {
-      dataSheet.getRange('V1:W1').setValues([['Score report folder ID:', scoreReportFolderId]]);
-    }
+    const scoreReportFolderId = getScoreReportFolderId(adminSsId, 'act');
 
     const pdfName = `ACT ${currentTestData.test} answer analysis - ${studentName}.pdf`;
-    const answerSheetId = spreadsheet.getSheetByName(currentTestData.test).getSheetId();
+    const answerSheetId = adminSs.getSheetByName(currentTestData.test).getSheetId();
     const analysisSheetName = currentTestData.test + ' analysis';
-    let analysisSheet = spreadsheet.getSheetByName(analysisSheetName);
+    let analysisSheet = adminSs.getSheetByName(analysisSheetName);
 
     if (!analysisSheet) {
-      const testAnalysisSheet = spreadsheet.getSheetByName('Test analysis');
-      analysisSheet = testAnalysisSheet.copyTo(spreadsheet).setName(analysisSheetName);
+      const testAnalysisSheet = adminSs.getSheetByName('Test analysis');
+      analysisSheet = testAnalysisSheet.copyTo(adminSs).setName(analysisSheetName);
     }
     const analysisPivot = analysisSheet.getPivotTables()[0];
 
@@ -158,11 +164,11 @@ async function createActScoreReportPdf(spreadsheetId, currentTestData) {
       Logger.log('No Pivot Table found at the specified range.');
     }
 
-    const answerSheetPosition = spreadsheet.getSheetByName(currentTestData.test).getIndex();
+    const answerSheetPosition = adminSs.getSheetByName(currentTestData.test).getIndex();
 
     if (analysisSheet.getIndex() !== answerSheetPosition + 1) {
-      spreadsheet.setActiveSheet(analysisSheet);
-      spreadsheet.moveActiveSheet(answerSheetPosition + 1);
+      adminSs.setActiveSheet(analysisSheet);
+      adminSs.moveActiveSheet(answerSheetPosition + 1);
     }
 
     const analysisSheetId = analysisSheet.getSheetId();
@@ -170,7 +176,7 @@ async function createActScoreReportPdf(spreadsheetId, currentTestData) {
     Logger.log(`Starting ${currentTestData.test} score report for ${studentName}`);
 
     const answerSheetMargins = { top: '0.3', bottom: '0.25', left: '0.35', right: '0.35' };
-    const answerFileId = savePdfSheet(spreadsheetId, answerSheetId, studentName, answerSheetMargins);
+    const answerFileId = savePdfSheet(adminSsId, answerSheetId, studentName, answerSheetMargins);
 
     const pageBreakRow = getActPageBreakRow(analysisSheet, 3);
     const analysisSheetMargin = { top: '0.25', bottom: '0.25', left: '0.25', right: '0.25' };
@@ -187,24 +193,22 @@ async function createActScoreReportPdf(spreadsheetId, currentTestData) {
       analysisSheetMargin.bottom = String(Math.floor(bottomMargin * 1000) / 1000);
     }
 
-    Logger.log(analysisSheetMargin.bottom);
-    const analysisFileId = savePdfSheet(spreadsheetId, analysisSheetId, studentName, analysisSheetMargin);
+    const analysisFileId = savePdfSheet(adminSsId, analysisSheetId, studentName, analysisSheetMargin);
 
     const fileIdsToMerge = [analysisFileId, answerFileId];
 
     const mergedFile = await mergePDFs(fileIdsToMerge, scoreReportFolderId, pdfName);
-    const mergedBlob = mergedFile.getBlob();
-    const pdfFile = DriveApp.getFolderById(scoreReportFolderId).createFile(mergedBlob).setName(pdfName);
-    const pdfUrl = pdfFile.getUrl();
+    // const mergedBlob = mergedFile.getBlob();
+    // const pdfFile = DriveApp.getFolderById(scoreReportFolderId).createFile(mergedBlob).setName(pdfName);
+    const pdfUrl = mergedFile.getUrl();
 
-    var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}">ACT ${currentTestData.test} score report</a>`)
+    var htmlOutput = HtmlService.createHtmlOutput(`<a href="${pdfUrl}" target="_blank">ACT ${currentTestData.test} score report</a>`)
       .setWidth(250) //optional
       .setHeight(100); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, `PDF complete`);
     Logger.log(studentName + ' ' + currentTestData.test + ' score report complete');
   } catch (err) {
-    Logger.log(err.stack);
-    throw new Error(err.message + '\n\n' + err.stack);
+    errorNotification(err, adminSsId);
   }
 }
 
@@ -306,8 +310,7 @@ function savePdfSheet(
 
     return pdfSheet.getId();
   } catch (err) {
-    Logger.log(err.stack);
-    throw new Error(err.message + '\n\n' + err.stack);
+    
   }
 }
 

@@ -7,8 +7,10 @@ function createMathRevSheet() {
 }
 
 function createRevSheet(sub, subIndex) {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ssId = ss.getId();
+
   try {
-    let ss = SpreadsheetApp.getActiveSpreadsheet();
     let revBackend = ss.getSheetByName('Rev sheet backend');
     let maxQuestionRange = revBackend.getRange('L2');
     let ui = SpreadsheetApp.getUi();
@@ -133,11 +135,7 @@ function createRevSheet(sub, subIndex) {
       }
     }
     catch(err) {
-      Logger.log(err.stack);
-      let htmlOutput = HtmlService.createHtmlOutput('<p>Rev sheet error: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
-      .setWidth(400)
-      SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
-      return;
+      errorNotification(err, ssId);
     }
 
     Logger.log('Rev folder logic complete');
@@ -257,9 +255,7 @@ function createRevSheet(sub, subIndex) {
       .setHeight(50); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
   } catch (err) {
-    let htmlOutput = HtmlService.createHtmlOutput(err.stack).setWidth(400); //optional
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
-    Logger.log(err.stack);
+    errorNotification(err, ssId);
   }
 }
 

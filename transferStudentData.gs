@@ -29,6 +29,7 @@ function transferOldStudentData() {
 
 function syncStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
+  const newAdminSsId = newAdminSs.getId()
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
   const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
@@ -47,7 +48,7 @@ function syncStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfw
     let newQbSheet = newAdminSs.getSheetByName('Question bank data');
     let timestampRange = newQbSheet.getRange(2, 11, getLastFilledRow(newQbSheet, 11));
 
-    if (oldAdminSsId !== newAdminSs.getId()) {
+    if (oldAdminSsId !== newAdminSsId) {
       // temporarily set old admin data imports
       newStudentData.getRange('A3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$A$1:$G10000")');
       newStudentData.getRange('H3').setValue('=importrange("' + oldAdminSsId + '", "Question bank data!$I$1:$K10000")');
@@ -266,10 +267,7 @@ function syncStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfw
     allNewStudentSheetValues.forEach(item => item.range.setValues(item.values));
   }
   catch (err) {
-    let htmlOutput = HtmlService.createHtmlOutput('<p>Error while processing data: ' + err.stack + '</p><p>Please copy this error and send to danny@openpathtutoring.com.</p>')
-      .setWidth(400)
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Error');
-    Logger.log(err.stack);
+    errorNotification(err, newAdminSsId);
   }
 
   // revert student ID and SS permissions

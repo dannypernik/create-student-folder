@@ -295,7 +295,8 @@ function linkSheets(folderId, studentName='', prepType='all') {
     if (!studentRevDataSheet) {
       try {
         studentRevDataSheet = revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
-      } catch (err) {
+      } //
+      catch (err) {
         const ui = SpreadsheetApp.getUi();
         const continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
 

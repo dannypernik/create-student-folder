@@ -5,247 +5,252 @@ function updateConceptData(adminSsId, studentSsId = null) {
     studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   }
 
-  const satDataSsId = '1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE';
-  const qbDataSheetName = 'Question bank data updated ' + dataLatestDate;
-  const ptDataSheetName = 'Practice test data updated ' + dataLatestDate;
-  const qbDataSh = SpreadsheetApp.openById(satDataSsId).getSheetByName(qbDataSheetName);
-  const qbDataVals = qbDataSh.getRange(1,1, getLastFilledRow(qbDataSh, 1), 15).getValues();
+  try {
+    const satDataSsId = '1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE';
+    const qbDataSheetName = 'Question bank data updated ' + dataLatestDate;
+    const ptDataSheetName = 'Practice test data updated ' + dataLatestDate;
+    const qbDataSh = SpreadsheetApp.openById(satDataSsId).getSheetByName(qbDataSheetName);
+    const qbDataVals = qbDataSh.getRange(1,1, getLastFilledRow(qbDataSh, 1), 15).getValues();
 
-  const subjectData = [
-    {
-      'name': 'Reading & Writing',
-      'rowOffset': 7,
-    },
-    {
-      'name': 'Math',
-      'rowOffset': 10
-    }
-  ]
+    const subjectData = [
+      {
+        'name': 'Reading & Writing',
+        'rowOffset': 7,
+      },
+      {
+        'name': 'Math',
+        'rowOffset': 10
+      }
+    ]
 
-  for (id of [adminSsId, studentSsId]) {
-    if (!id) {
-      continue;
-    }
-
-    const ss = SpreadsheetApp.openById(id);
-    let isAdminSs;
-
-    if (id === adminSsId) {
-      isAdminSs = true;
-    }
-    else {
-      isAdminSs = false;
-    }
-
-    if (id) {
-      for (subject of subjectData) {
-        const sh = ss.getSheetByName(subject['name']);
-        const conceptColVals = sh.getRange(subject['rowOffset'], 2, sh.getMaxRows() - subject['rowOffset']).getValues();
-        const conceptData = [];
-        const modifications = [];
-        let id = 1;
-
-        for (let x = 0; x < conceptColVals.length; x++) {
-          if (cats.includes(conceptColVals[x][0])) {
-            var row = x + subject['rowOffset'];
-            conceptData.push({
-              'name': conceptColVals[x][0],
-              'row': row,                        // row 1-indexed
-              'id': id
-            });
-            id ++;
-          }
-        }
-
-        for (concept of conceptData) {
-          for (let level = 1; level < 4; level ++) {
-            let count = 0;
-            for (let r = 0; r < qbDataVals.length; r++) {
-              if (qbDataVals[r][3].toLowerCase() === concept['name'].toLowerCase() && Number(qbDataVals[r][4]) === level && qbDataVals[r][6].slice(0,3) !== 'SAT' && qbDataVals[r][6].slice(0,4) !== 'PSAT' && qbDataVals[r][6].slice(0,3) !== 'SLT') {
-                count ++;
-              }
-            }
-            concept['level' + level] = count;
-          }
-        }
-
-        Logger.log('Calculating row modifications for ' + subject.name);
-        for (concept of conceptData) {
-          const rowsNeeded = Math.max(concept['level1'], concept['level2'], concept['level3']) + 4;
-          const nextConcept = conceptData.find(c => c.id === concept['id'] + 1);
-          let rowsToAdd, endRow;
-
-          if (nextConcept) {
-            endRow = nextConcept.row;
-          }
-          else {
-            endRow = sh.getMaxRows() + 1;
-          }
-          rowsToAdd = concept['row'] + rowsNeeded - endRow;
-
-          if (rowsToAdd > 0) {
-            modifications.push({
-              'position': endRow - 1,
-              'rows': rowsToAdd
-            });
-          }
-          else if (rowsToAdd < 0) {
-            modifications.push({
-              'position': concept['row'] + rowsNeeded + rowsToAdd - 1, // rowsToAdd negative
-              'rows': rowsToAdd
-            });
-          }
-        }
-        modifyRowsAtPositions(sh, modifications);
-
-        const shNewRange = sh.getRange(subject['rowOffset'], 1, sh.getMaxRows() - subject['rowOffset'], sh.getMaxColumns());
-        shNewRange.setNumberFormat('@STRING@');
-        const shNewVals = shNewRange.getValues();
-        const shFormulas = shNewRange.getFormulas();
-        const newConceptRows = shNewVals.map(row => row[1]);
-
-        Logger.log(conceptData);
-
-        for (let level = 1; level < 4; level++) {
-          const levelStartCol = (level - 1) * 4;
-
-          for (concept of conceptData) {
-
-            // Since newConceptRows starts at subject['rowOffset'] and includes blanks,
-            // concept['index'] is 0-indexed position of concept name starting at 1st concept
-            concept['index'] = newConceptRows.indexOf(concept['name']);
-
-            const levelRow = concept['index'] + 2;
-            shNewVals[levelRow][levelStartCol + 1] = shFormulas[levelRow][levelStartCol + 1];
-
-            for (qNum = 1; qNum <= concept['level' + level]; qNum++) {
-              const qRow = levelRow + qNum;
-
-              // Find the matching row in Question bank data
-              const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
-
-              shNewVals[qRow] = []
-              shNewVals[qRow][levelStartCol] = dataRow[0];
-              shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
-            }
-          }
-
-          const outputValues = [];
-          for (let i = 0; i < shNewVals.length; i++) {
-            outputValues.push([
-              shNewVals[i][levelStartCol],
-              shNewVals[i][levelStartCol + 1]
-            ]);
-          }
-
-          sh.getRange(subject['rowOffset'], levelStartCol + 1, outputValues.length, 2).setValues(outputValues);
-          sh.getRange(subject['rowOffset'], levelStartCol + 2, outputValues.length).setHorizontalAlignment('center').setFontWeight('bold')
-        }
-
-
-        const answerFormulaR1C1 = '=let(worksheetNum,R[0]C[-1],if(worksheetNum="","", if(iserror(search(".",worksheetNum)),"", let(id,R[0]C[-2], xlookup(id,\'Student responses\'!R4C1:C1,\'Student responses\'!R4C8:C8,"not found")))))'
-        const correctedFormulaR1C1 = '=let(worksheetNum,R[0]C[-2],if(worksheetNum="","", if(left(worksheetNum,5)="Level","Corrected", if(iserror(search(".",worksheetNum)), "", let(id,R[0]C[-3], result,xlookup(id,\'Question bank data\'!R2C1:C1,\'Question bank data\'!R2C8:C8,"not found"), if(result=R[0]C[-1],"",result))))))'
-
-        if (isAdminSs) {
-          for (let level = 1; level < 4; level++) {
-            const answerCol = 4 * (level - 1) + 3;
-            if (studentSsId) {
-              const answerRange = sh.getRange(subject['rowOffset'] + 3, answerCol, sh.getMaxRows() - subject['rowOffset'] - 3);
-              const answerVals = answerRange.getValues();
-
-              for (let r = 0; r < answerVals.length; r ++) {
-                let startRow = subject['rowOffset'] + 3 + r;
-                let numRows = 0;
-
-                // Set R1C1 formula for consecutive blank rows, leave values as is
-                while (r < answerVals.length && answerVals[r][0] === '') {
-                  numRows ++;
-                  r ++;
-                }
-                if (numRows > 0) {
-                  sh.getRange(startRow, answerCol, numRows).setFormulaR1C1(answerFormulaR1C1);
-                }
-              }
-              answerRange.setHorizontalAlignment('center').setFontWeight('normal');
-            }
-            const correctedRange = sh.getRange(subject['rowOffset'] + 3, answerCol + 1, sh.getMaxRows() - subject['rowOffset'] - 3);
-            correctedRange.setHorizontalAlignment('center').setFontWeight('normal').setFormulaR1C1(correctedFormulaR1C1);
-          }
-
-          Logger.log('formulas updated for ' + subject.name);
-        }
-
-        for (concept of conceptData) {
-          const headerStartRow = concept['index'] + subject['rowOffset'];
-          sh.getRange(headerStartRow, 2, 1, 11).merge().setHorizontalAlignment('left');
-          sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
-        }
-
-        modifyConceptFormatRules(sh, isAdminSs);
+    for (id of [adminSsId, studentSsId]) {
+      if (!id) {
+        continue;
       }
 
-      if (isAdminSs) {
-        const qbDataFormula = ss.getSheetByName('Question bank data').getRange('A1').getFormula();
-        const qbCommaIndex = qbDataFormula.indexOf(',');
-        const qbFormulaStart = qbDataFormula.toString().slice(0,qbCommaIndex);
-        const ptDataFormula = ss.getSheetByName('Practice test data').getRange('A1').getFormula();
-        const ptCommaIndex = ptDataFormula.indexOf(',');
-        const ptFormulaStart = ptDataFormula.toString().slice(0,ptCommaIndex);
-        const revBackendSheet = ss.getSheetByName('Rev sheet backend');
+      const ss = SpreadsheetApp.openById(id);
+      let isAdminSs;
 
-        if (revBackendSheet) {
-          const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
-          const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
-
-          if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
-            const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
-            newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:H10000")')
-          }
-
-          if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
-            const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
-            newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:J10000")')
-          }
-        }
-
-        ss.getSheetByName('Question bank data').getRange('A1').setValue(qbFormulaStart + ', "' + qbDataSheetName + '!A1:H10000")');
-        ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "' + ptDataSheetName + '!A1:J10000")');
-        Logger.log('sat admin data URLs updated')
+      if (id === adminSsId) {
+        isAdminSs = true;
       }
       else {
-        // Student sheets do not always have separate studentDataId cell
-        let satStudentDataSsId = ss.getSheetByName('Question bank data').getRange('U7').getValue();
-        const qbImportCell = ss.getSheetByName('Question bank data').getRange('A1');
-        const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
-        const qbImportValue = qbImportCell.getFormula();
-        const ptImportValue = ptImportCell.getFormula();
-        const newQbImportValue = qbImportValue.replace(/bank data.*?!/, `bank data updated ${dataLatestDate}!`);
-        const newPtImportValue = ptImportValue.replace(/test data.*?!/, `test data updated ${dataLatestDate}!`);
-        qbImportCell.setFormula(newQbImportValue);
-        ptImportCell.setFormula(newPtImportValue);
-        Logger.log('sat student data URLs updated');
+        isAdminSs = false;
+      }
 
-        if (!satStudentDataSsId){
-          const openQuoteIndex = qbImportValue.indexOf('"');
-          const closeQuoteIndex = qbImportValue.indexOf('"',openQuoteIndex + 1);
-          satStudentDataSsId = qbImportValue.slice(openQuoteIndex + 1, closeQuoteIndex);
-          Logger.log('satStudentDataSsId: ' + satStudentDataSsId);
-          if (satStudentDataSsId.includes('/')) {
-            satStudentDataSsId = satStudentDataSsId.split('/d/')[1].split('/')[0];
+      if (id) {
+        for (subject of subjectData) {
+          const sh = ss.getSheetByName(subject['name']);
+          const conceptColVals = sh.getRange(subject['rowOffset'], 2, sh.getMaxRows() - subject['rowOffset']).getValues();
+          const conceptData = [];
+          const modifications = [];
+          let id = 1;
+
+          for (let x = 0; x < conceptColVals.length; x++) {
+            if (cats.includes(conceptColVals[x][0])) {
+              var row = x + subject['rowOffset'];
+              conceptData.push({
+                'name': conceptColVals[x][0],
+                'row': row,                        // row 1-indexed
+                'id': id
+              });
+              id ++;
+            }
           }
+
+          for (concept of conceptData) {
+            for (let level = 1; level < 4; level ++) {
+              let count = 0;
+              for (let r = 0; r < qbDataVals.length; r++) {
+                if (qbDataVals[r][3].toLowerCase() === concept['name'].toLowerCase() && Number(qbDataVals[r][4]) === level && qbDataVals[r][6].slice(0,3) !== 'SAT' && qbDataVals[r][6].slice(0,4) !== 'PSAT' && qbDataVals[r][6].slice(0,3) !== 'SLT') {
+                  count ++;
+                }
+              }
+              concept['level' + level] = count;
+            }
+          }
+
+          Logger.log('Calculating row modifications for ' + subject.name);
+          for (concept of conceptData) {
+            const rowsNeeded = Math.max(concept['level1'], concept['level2'], concept['level3']) + 4;
+            const nextConcept = conceptData.find(c => c.id === concept['id'] + 1);
+            let rowsToAdd, endRow;
+
+            if (nextConcept) {
+              endRow = nextConcept.row;
+            }
+            else {
+              endRow = sh.getMaxRows() + 1;
+            }
+            rowsToAdd = concept['row'] + rowsNeeded - endRow;
+
+            if (rowsToAdd > 0) {
+              modifications.push({
+                'position': endRow - 1,
+                'rows': rowsToAdd
+              });
+            }
+            else if (rowsToAdd < 0) {
+              modifications.push({
+                'position': concept['row'] + rowsNeeded + rowsToAdd - 1, // rowsToAdd negative
+                'rows': rowsToAdd
+              });
+            }
+          }
+          modifyRowsAtPositions(sh, modifications);
+
+          const shNewRange = sh.getRange(subject['rowOffset'], 1, sh.getMaxRows() - subject['rowOffset'], sh.getMaxColumns());
+          shNewRange.setNumberFormat('@STRING@');
+          const shNewVals = shNewRange.getValues();
+          const shFormulas = shNewRange.getFormulas();
+          const newConceptRows = shNewVals.map(row => row[1]);
+
+          Logger.log(conceptData);
+
+          for (let level = 1; level < 4; level++) {
+            const levelStartCol = (level - 1) * 4;
+
+            for (concept of conceptData) {
+
+              // Since newConceptRows starts at subject['rowOffset'] and includes blanks,
+              // concept['index'] is 0-indexed position of concept name starting at 1st concept
+              concept['index'] = newConceptRows.indexOf(concept['name']);
+
+              const levelRow = concept['index'] + 2;
+              shNewVals[levelRow][levelStartCol + 1] = shFormulas[levelRow][levelStartCol + 1];
+
+              for (qNum = 1; qNum <= concept['level' + level]; qNum++) {
+                const qRow = levelRow + qNum;
+
+                // Find the matching row in Question bank data
+                const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
+
+                shNewVals[qRow] = []
+                shNewVals[qRow][levelStartCol] = dataRow[0];
+                shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
+              }
+            }
+
+            const outputValues = [];
+            for (let i = 0; i < shNewVals.length; i++) {
+              outputValues.push([
+                shNewVals[i][levelStartCol],
+                shNewVals[i][levelStartCol + 1]
+              ]);
+            }
+
+            sh.getRange(subject['rowOffset'], levelStartCol + 1, outputValues.length, 2).setValues(outputValues);
+            sh.getRange(subject['rowOffset'], levelStartCol + 2, outputValues.length).setHorizontalAlignment('center').setFontWeight('bold')
+          }
+
+
+          const answerFormulaR1C1 = '=let(worksheetNum,R[0]C[-1],if(worksheetNum="","", if(iserror(search(".",worksheetNum)),"", let(id,R[0]C[-2], xlookup(id,\'Student responses\'!R4C1:C1,\'Student responses\'!R4C8:C8,"not found")))))'
+          const correctedFormulaR1C1 = '=let(worksheetNum,R[0]C[-2],if(worksheetNum="","", if(left(worksheetNum,5)="Level","Corrected", if(iserror(search(".",worksheetNum)), "", let(id,R[0]C[-3], result,xlookup(id,\'Question bank data\'!R2C1:C1,\'Question bank data\'!R2C8:C8,"not found"), if(result=R[0]C[-1],"",result))))))'
+
+          if (isAdminSs) {
+            for (let level = 1; level < 4; level++) {
+              const answerCol = 4 * (level - 1) + 3;
+              if (studentSsId) {
+                const answerRange = sh.getRange(subject['rowOffset'] + 3, answerCol, sh.getMaxRows() - subject['rowOffset'] - 3);
+                const answerVals = answerRange.getValues();
+
+                for (let r = 0; r < answerVals.length; r ++) {
+                  let startRow = subject['rowOffset'] + 3 + r;
+                  let numRows = 0;
+
+                  // Set R1C1 formula for consecutive blank rows, leave values as is
+                  while (r < answerVals.length && answerVals[r][0] === '') {
+                    numRows ++;
+                    r ++;
+                  }
+                  if (numRows > 0) {
+                    sh.getRange(startRow, answerCol, numRows).setFormulaR1C1(answerFormulaR1C1);
+                  }
+                }
+                answerRange.setHorizontalAlignment('center').setFontWeight('normal');
+              }
+              const correctedRange = sh.getRange(subject['rowOffset'] + 3, answerCol + 1, sh.getMaxRows() - subject['rowOffset'] - 3);
+              correctedRange.setHorizontalAlignment('center').setFontWeight('normal').setFormulaR1C1(correctedFormulaR1C1);
+            }
+
+            Logger.log('formulas updated for ' + subject.name);
+          }
+
+          for (concept of conceptData) {
+            const headerStartRow = concept['index'] + subject['rowOffset'];
+            sh.getRange(headerStartRow, 2, 1, 11).merge().setHorizontalAlignment('left');
+            sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
+          }
+
+          modifyConceptFormatRules(sh, isAdminSs);
         }
 
-        const satStudentDataSs = SpreadsheetApp.openById(satStudentDataSsId);
-        if (!satStudentDataSs.getSheetByName(qbDataSheetName)) {
-          const newQbDataSheet = satStudentDataSs.getSheetByName('Question bank data').copyTo(satStudentDataSs).setName(qbDataSheetName);
-          newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:G10000")')
+        if (isAdminSs) {
+          const qbDataFormula = ss.getSheetByName('Question bank data').getRange('A1').getFormula();
+          const qbCommaIndex = qbDataFormula.indexOf(',');
+          const qbFormulaStart = qbDataFormula.toString().slice(0,qbCommaIndex);
+          const ptDataFormula = ss.getSheetByName('Practice test data').getRange('A1').getFormula();
+          const ptCommaIndex = ptDataFormula.indexOf(',');
+          const ptFormulaStart = ptDataFormula.toString().slice(0,ptCommaIndex);
+          const revBackendSheet = ss.getSheetByName('Rev sheet backend');
+
+          if (revBackendSheet) {
+            const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
+            const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
+
+            if (!satAdminDataSs.getSheetByName(qbDataSheetName)) {
+              const newQbDataSheet = satAdminDataSs.getSheetByName('Question bank data').copyTo(satAdminDataSs).setName(qbDataSheetName);
+              newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:H10000")')
+            }
+
+            if (!satAdminDataSs.getSheetByName(ptDataSheetName)) {
+              const newPtDataSheet = satAdminDataSs.getSheetByName('Practice test data').copyTo(satAdminDataSs).setName(ptDataSheetName);
+              newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:J10000")')
+            }
+          }
+
+          ss.getSheetByName('Question bank data').getRange('A1').setValue(qbFormulaStart + ', "' + qbDataSheetName + '!A1:H10000")');
+          ss.getSheetByName('Practice test data').getRange('A1').setValue(ptFormulaStart + ', "' + ptDataSheetName + '!A1:J10000")');
+          Logger.log('sat admin data URLs updated')
         }
-        if (!satStudentDataSs.getSheetByName(ptDataSheetName)) {
-          const newPtDataSheet = satStudentDataSs.getSheetByName('Practice test data').copyTo(satStudentDataSs).setName(ptDataSheetName);
-          newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:E10000")')
+        else {
+          // Student sheets do not always have separate studentDataId cell
+          let satStudentDataSsId = ss.getSheetByName('Question bank data').getRange('U7').getValue();
+          const qbImportCell = ss.getSheetByName('Question bank data').getRange('A1');
+          const ptImportCell = ss.getSheetByName('Practice test data').getRange('A1');
+          const qbImportValue = qbImportCell.getFormula();
+          const ptImportValue = ptImportCell.getFormula();
+          const newQbImportValue = qbImportValue.replace(/bank data.*?!/, `bank data updated ${dataLatestDate}!`);
+          const newPtImportValue = ptImportValue.replace(/test data.*?!/, `test data updated ${dataLatestDate}!`);
+          qbImportCell.setFormula(newQbImportValue);
+          ptImportCell.setFormula(newPtImportValue);
+          Logger.log('sat student data URLs updated');
+
+          if (!satStudentDataSsId){
+            const openQuoteIndex = qbImportValue.indexOf('"');
+            const closeQuoteIndex = qbImportValue.indexOf('"',openQuoteIndex + 1);
+            satStudentDataSsId = qbImportValue.slice(openQuoteIndex + 1, closeQuoteIndex);
+            Logger.log('satStudentDataSsId: ' + satStudentDataSsId);
+            if (satStudentDataSsId.includes('/')) {
+              satStudentDataSsId = satStudentDataSsId.split('/d/')[1].split('/')[0];
+            }
+          }
+
+          const satStudentDataSs = SpreadsheetApp.openById(satStudentDataSsId);
+          if (!satStudentDataSs.getSheetByName(qbDataSheetName)) {
+            const newQbDataSheet = satStudentDataSs.getSheetByName('Question bank data').copyTo(satStudentDataSs).setName(qbDataSheetName);
+            newQbDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + qbDataSheetName + '!A1:G10000")')
+          }
+          if (!satStudentDataSs.getSheetByName(ptDataSheetName)) {
+            const newPtDataSheet = satStudentDataSs.getSheetByName('Practice test data').copyTo(satStudentDataSs).setName(ptDataSheetName);
+            newPtDataSheet.getRange('A1').setFormula('=importrange("' + satDataSsId + '", "' + ptDataSheetName + '!A1:E10000")')
+          }
         }
       }
     }
+  }
+  catch (err) {
+    errorNotification(err, adminSsId);
   }
 }
 
@@ -473,7 +478,7 @@ function findClientFileIds() {
     if (prompt.getSelectedButton() == ui.Button.CANCEL) {
       return;
     } //
-else {
+    else {
       studentsFolderId = getIdFromDriveUrl(response);
     }
 
