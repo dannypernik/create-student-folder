@@ -1,8 +1,10 @@
+function transferSatStudentData() {
+  transferOldStudentData();
+}
+
 function transferOldStudentData() {
   const startTime = new Date().getTime(); // Record the start time
   let ui = SpreadsheetApp.getUi();
-  // ui.alert('Data transfer is not currently working properly. Exiting.');
-  // return;
 
   let prompt = ui.prompt(
     'Old admin analysis spreadsheet URL or ID - leave blank \r\n' +
@@ -24,10 +26,10 @@ function transferOldStudentData() {
     oldAdminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
   }
 
-  syncStudentData(oldAdminSsId, startTime);
+  syncSatStudentData(oldAdminSsId, startTime);
 }
 
-function syncStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
+function syncSatStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newAdminSsId = newAdminSs.getId()
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();

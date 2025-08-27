@@ -2,6 +2,8 @@ const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccou
 const ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
 dataLatestDate = '08/2025';
 isUpdateAvailable = true;
+areNewSatTestsAvailable = false;
+isActSyncAvailable = false;
 
 const cats = [
   'Area and volume',
