@@ -263,7 +263,6 @@ function updateConceptDataAllSpreadsheets() {
 
   if (studentsFolderId) {
     Logger.log(`Continuing folder update`);
-      
   } //
   else {
     const prompt = ui.prompt('URL of Drive folder where student folders are located (leave blank to use the parent folder of the template folder, which is where student folders are saved by default)');

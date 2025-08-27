@@ -537,8 +537,8 @@ function errorNotification(error, ssId) {
   
   // const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
   const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
-    .setWidth(250) //optional
-    .setHeight(100); //optional
+    .setWidth(500) //optional
+    .setHeight(300); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
 
   // const ss = SpreadsheetApp.openById(ssId);
