@@ -358,6 +358,113 @@ function getIdFromDriveUrl(url) {
   return id;
 }
 
+// function getIdFromImportFormula(formulaString) {
+//   if (!formulaString) return "";
+
+//   const formula = formulaString.toString().trim();
+
+//   // 1. Get everything between first "(" and first ","
+//   const openParen = formula.indexOf("(");
+//   const comma = formula.indexOf(",");
+//   if (openParen === -1 || comma === -1 || comma < openParen) return "";
+
+//   let firstArg = formula.substring(openParen + 1, comma).trim();
+
+//   // 2. Remove wrapping quotes if present
+//   if ((firstArg.startsWith('"') && firstArg.endsWith('"'))) {
+//     firstArg = firstArg.slice(1, -1);
+//   }
+
+//   // 3. If it contains "/", assume URL
+//   if (firstArg.includes("/")) {
+//     // Extract ID if possible
+//     const urlMatch = firstArg.match(/\/d\/([a-zA-Z0-9-_]+)/);
+//     return urlMatch ? urlMatch[1] : "";
+//   }
+
+//   // 4. If it's a cell reference
+//   if (/^[A-Z]+\d+|^\$?[A-Z]+\$?\d+$/.test(firstArg) || firstArg.includes("!")) {
+//     const ss = SpreadsheetApp.getActiveSpreadsheet();
+//     let sheet, cellRef;
+
+//     if (firstArg.includes("!")) {
+//       const parts = firstArg.split("!");
+//       const sheetName = parts[0].replace(/^'|'$/g, ""); // remove quotes around sheet name
+//       cellRef = parts[1];
+//       sheet = ss.getSheetByName(sheetName);
+//     } //
+//     else {
+//       // Reference from same sheet
+//       sheet = SpreadsheetApp.getActiveRange().getSheet();
+//       cellRef = firstArg;
+//     }
+    
+//     if (!sheet) return "";
+//     const value = sheet.getRange(cellRef).getValue().toString().trim();
+//     return value;
+//   } 
+
+//   // 5. Otherwise, treat as raw ID and test
+//   try {
+//     SpreadsheetApp.openById(firstArg); // throws if invalid
+//     return firstArg;
+//   } catch (e) {
+//     errorNotification(e, ss.getId());
+//   }
+// }
+
+function getIdFromImportFormula(cell) {
+  const formulaString = cell.getFormula();
+  if (!formulaString) return "";
+
+  const formula = formulaString.toString().trim();
+
+  // 1. Extract first argument inside IMPORTRANGE(...)
+  const argMatch = formula.match(/^=IMPORTRANGE\(([^,]+),/i);
+  if (!argMatch) return "";
+
+  let firstArg = argMatch[1].trim();
+
+  // 2. Strip wrapping quotes
+  if ((firstArg.startsWith('"') && firstArg.endsWith('"')) || 
+      (firstArg.startsWith("'") && firstArg.endsWith("'"))) {
+    firstArg = firstArg.slice(1, -1);
+  }
+
+  // 3. If it looks like a URL, extract ID
+  const urlMatch = firstArg.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (urlMatch) return urlMatch[1];
+
+  // 4. If it’s a cell reference (with optional sheet prefix)
+  if (/^'?[^'!]+!'?[A-Z]+\d+$/.test(firstArg) || /^[A-Z]+\d+$/.test(firstArg)) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet, cellRef;
+
+    if (firstArg.includes("!")) {
+      const parts = firstArg.split("!");
+      const sheetName = parts[0].replace(/^'|'$/g, "");
+      cellRef = parts[1];
+      sheet = ss.getSheetByName(sheetName);
+    } else {
+      sheet = cell.getSheet();
+      cellRef = firstArg;
+      Logger.log(`${sheet.getName()} ${cellRef}`);
+    }
+
+    if (!sheet) return "";
+    const value = sheet.getRange(cellRef).getValue().toString().trim();
+    return value;
+  }
+
+  // 5. Otherwise assume it’s already an ID
+  try {
+    SpreadsheetApp.openById(firstArg); // will throw if invalid
+    return firstArg;
+  } catch (e) {
+    return ""; // avoid recursive errorNotification loop
+  }
+}
+
 
 function isEmptyFolder(folderId) {
   const folder = DriveApp.getFolderById(folderId);
@@ -534,28 +641,27 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
 
 
 function errorNotification(error, ssId) {
-  
-  // const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
-  const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
+  const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
+  // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
     .setWidth(500) //optional
     .setHeight(300); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
 
-  // const ss = SpreadsheetApp.openById(ssId);
-  // const editorEmails = []
-  // ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
+  const ss = SpreadsheetApp.openById(ssId);
+  const editorEmails = []
+  ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
 
-  // const message = `
-  //   <p>Error details: ${error.stack}</p>
-  //   <p><a href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank">${ss.getName()}</a></p>
-  //   <p>Editors: ${editorEmails}</p>
-  // `
+  const message = `
+    <p>Error details: ${error.stack}</p>
+    <p><a href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank">${ss.getName()}</a></p>
+    <p>Editors: ${editorEmails}</p>
+  `
 
-  // MailApp.sendEmail({
-  //   to: ADMIN_EMAIL,
-  //   subject: `Spreadsheet error: ${error.message}`,
-  //   htmlBody: message
-  // });
+  MailApp.sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `Spreadsheet error: ${error.message}`,
+    htmlBody: message
+  });
 
   Logger.log(error.message + '\n\n' + error.stack);
   throw new Error(error.message + '\n\n' + error.stack);

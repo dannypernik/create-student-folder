@@ -50,3 +50,14 @@ const actSheetIds = {
   studentData: null,
   adminData: null,
 };
+
+const subjectData = [
+  {
+    'name': 'Reading & Writing',
+    'rowOffset': 7,
+  },
+  {
+    'name': 'Math',
+    'rowOffset': 10
+  }
+]
