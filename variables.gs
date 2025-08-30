@@ -1,5 +1,5 @@
-SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
-ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
+const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
+const ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
 dataLatestDate = '08/2025';
 isUpdateAvailable = true;
 areNewSatTestsAvailable = false;
@@ -37,14 +37,14 @@ cats = [
   'Text, structure, and purpose',
 ];
 
-const satSheetIds = {
+const satSsIds = {
   admin: null,
   student: null,
   studentData: null,
   adminData: null,
 };
 
-const actSheetIds = {
+const actSsIds = {
   admin: null,
   student: null,
   studentData: null,
