@@ -32,17 +32,25 @@ function createRevSheet(sub, subIndex) {
       return;
     }
 
-    let adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
-    let revSheet = ss.getSheetByName(sub + ' Rev sheet');
-    let revSubjectFolderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
+    const adminFolder = DriveApp.getFileById(ss.getId()).getParents().next();
+    const revSheet = ss.getSheetByName(sub + ' Rev sheet');
+    const revSubjectFolderIdCell = revBackend.getRange(2, 3 + subBackendOffset);
     let revSubjectFolderId = revSubjectFolderIdCell.getValue();
-    let revSheetFolderIdCell = revBackend.getRange('U2');
+    const revSheetFolderIdCell = revBackend.getRange('U2');
     let revSheetFolderId = revSheetFolderIdCell.getValue();
-    let revKeyFolderCell = revBackend.getRange('U4');
+    const revKeyFolderCell = revBackend.getRange('U4');
     let revKeyFolderId = revKeyFolderCell.getValue();
-    let revKeySubjectFolderCell = revBackend.getRange(3, 3 + subBackendOffset);
+    const revKeySubjectFolderCell = revBackend.getRange(3, 3 + subBackendOffset);
     let revKeySubjectFolderId = revKeySubjectFolderCell.getValue();
-    let studentName = revBackend.getRange('K2').getValue();
+    const studentNameCell = revBackend.getRange('K2');
+    let studentName = studentNameCell.getValue();
+
+    if (!studentName) {
+      const ssName = ss.getName();
+      studentName = ssName.slice(ssName.indexOf('-') + 2);
+      studentNameCell.setValue(studentName);
+    }
+
     let revDataSsId = revBackend.getRange('U3').getValue();
     let revDataSs = SpreadsheetApp.openById(revDataSsId);
     let revDataSheet = revDataSs.getSheetByName(studentName);
