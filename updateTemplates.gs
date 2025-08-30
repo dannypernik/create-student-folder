@@ -327,9 +327,6 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
 // }
 
 function updateSatWorksheetLinks() {
-  // SpreadsheetApp.getUi().alert('Function under construnction');
-  // return;
-
   const templateAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const revBackendSheet = templateAdminSs.getSheetByName('Rev sheet backend');
   const adminDataSsId = revBackendSheet.getRange('U5').getValue();
@@ -338,7 +335,6 @@ function updateSatWorksheetLinks() {
   const templateStudentSs = SpreadsheetApp.openById(templateStudentSsId);
   const studentDataImportCell = templateStudentSs.getSheetByName('Question bank data').getRange('A1');
   const studentDataSsId = getIdFromImportFormula(studentDataImportCell);
-  Logger.log(studentDataSsId);
   const studentDataSs = SpreadsheetApp.openById(studentDataSsId);
   
   if (!adminDataSs.getSheetByName('Links')) {

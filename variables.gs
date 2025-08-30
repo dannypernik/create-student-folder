@@ -5,7 +5,7 @@ isUpdateAvailable = true;
 areNewSatTestsAvailable = false;
 isActSyncAvailable = false;
 
-const cats = [
+cats = [
   'Area and volume',
   'Boundaries',
   'Central ideas and details',
