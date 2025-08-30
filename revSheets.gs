@@ -47,7 +47,17 @@ function createRevSheet(sub, subIndex) {
 
     if (!studentName) {
       const ssName = ss.getName();
-      studentName = ssName.slice(ssName.indexOf('-') + 2);
+      const studentNameStart = ssName.indexOf('-') + 2;
+      if (studentNameStart) {
+        studentName = ssName.slice(studentNameStart);
+      } //
+      else {
+        prompt = ui.prompt('Student name', ui.ButtonSet.OK_CANCEL);
+        studentName = prompt.getResponseText();
+        if (prompt.getSelectedButton() == ui.Button.CANCEL) {
+          return;
+        }
+      }
       studentNameCell.setValue(studentName);
     }
 
