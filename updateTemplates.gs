@@ -1,6 +1,6 @@
 function updateConceptData(adminSsId, studentSsId = null) {
   if (!adminSsId) {
-    adminSs = SpreadsheetApp.getActiveSpreadsheet();
+    const adminSs = SpreadsheetApp.getActiveSpreadsheet();
     adminSsId = adminSs.getId();
     studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   }
@@ -214,7 +214,8 @@ function updateConceptData(adminSsId, studentSsId = null) {
     }
   }
   catch (err) {
-    errorNotification(err, adminSsId);
+    const adminFile = DriveApp.getFileById(adminSsId);
+    errorNotification(err, adminFile.getUrl());
   }
 }
 

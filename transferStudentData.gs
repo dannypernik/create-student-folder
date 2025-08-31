@@ -269,7 +269,8 @@ function syncSatStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWc
     allNewStudentSheetValues.forEach(item => item.range.setValues(item.values));
   }
   catch (err) {
-    errorNotification(err, newAdminSsId);
+    const newAdminFile = DriveApp.getFileById(newAdminSsId)
+    errorNotification(err, newAdminFile.getUrl());
   }
 
   // revert student ID and SS permissions

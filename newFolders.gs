@@ -17,9 +17,10 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   const studentData = copyFolder(sourceFolderId, newFolderId, studentName, 'sat');
+  studentData.folderId = newFolderId;
+  studentData.name = studentName;
 
   // const studentData = linkSheets(newFolderId, studentName, 'sat');
-  // studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
@@ -48,9 +49,10 @@ function NewActFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   const studentData = copyFolder(sourceFolderId, newFolderId, studentName, 'act');
+  studentData.folderId = newFolderId;
+  studentData.name = studentName;
 
   // const studentData = linkSheets(newFolderId, studentName, 'act');
-  // studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
@@ -79,9 +81,10 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
   const newFolderId = newFolder.getId();
 
   const studentData = copyFolder(sourceFolderId, newFolderId, studentName, 'all');
+  studentData.folderId = newFolderId;
+  studentData.name = studentName;
 
   // const studentData = linkSheets(newFolderId, studentName, 'all');
-  // studentData.folderId = newFolderId;
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
@@ -102,15 +105,15 @@ function getFolderIds(sourceFolderId, parentFolderId) {
   return { sourceFolderId, parentFolderId };
 }
 
-function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', linkFlags = { isSatLinkComplete: false, isActLinkComplete: false }) {
-  try {
+function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', studentData={}) {
+  // try {
     const sourceFolder = DriveApp.getFolderById(sourceFolderId);
     const newFolder = DriveApp.getFolderById(newFolderId);
     const newFolderName = newFolder.getName();
     Logger.log(`${newFolderName} folder started`)
 
     var files = sourceFolder.getFiles();
-    let testType, satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
+    let testType//, satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
 
     if (folderType.toLowerCase() === 'sat') {
       testType = 'SAT';
@@ -128,6 +131,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       const file = files.next();
       const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
       let filename = file.getName();
+      Logger.log(filename);
 
       if (prefixFiles.includes(filename)) {
         filename = studentName + ' ' + filename;
@@ -150,28 +154,31 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
 
       if (filename.toLowerCase().includes('answer analysis')) {
         if (filename.includes('SAT')) {
-          satAdminSsId = newFileId;
+          studentData.satAdminSsId = newFileId;
         } //
         else if (filename.includes('ACT')) {
-          actAdminSsId = newFileId;
+          studentData.actAdminSsId = newFileId;
         }
       } //
       else if (filename.toLowerCase().includes('student answer sheet')) {
         if (filename.includes('SAT')) {
-          satStudentSsId = newFileId;
+          studentData.satStudentSsId = newFileId;
         } //
         else if (filename.includes('ACT')) {
-          actStudentSsId = newFileId;
+          studentData.actStudentSsId = newFileId;
         }
       }
 
-      if (testType !== 'ACT' && !isSatLinkComplete && satAdminSsId && satStudentSsId) {
-        linkSatFiles(satAdminSsId, satStudentSsId, studentName);
-        linkFlags.isSatLinkComplete = true;
+      Logger.log(`${testType} ${studentData.satAdminSsId} ${studentData.satStudentSsId} ${studentData.isSatLinked} ${studentData.isActLinked} ${studentData.actAdminSsId} ${studentData.actStudentSsId}`)
+      if (testType !== 'ACT' && !studentData.isSatLinked && studentData.satAdminSsId && studentData.satStudentSsId) {
+        linkSatFiles(studentData.satAdminSsId, studentData.satStudentSsId, studentName);
+        studentData.isSatLinked = true;
+        Logger.log('SAT files linked');
       }
-      if (testType !== 'SAT' && !isActLinkComplete && actAdminSsId && actStudentSsId) {
-        linkActFiles(actAdminSsId, actStudentSsId, studentName);
-        linkFlags.isActLinkComplete = true;
+      if (testType !== 'SAT' && !studentData.isActLinked && studentData.actAdminSsId && studentData.actStudentSsId) {
+        linkActFiles(studentData.actAdminSsId, studentData.actStudentSsId, studentName);
+        studentData.isActLinked = true;
+        Logger.log('ACT files linked');
       }
 
       if (testType === 'SAT' && filename.includes('ACT') && filename.toLowerCase().includes('answer analysis')) {
@@ -227,22 +234,13 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
         targetFolder.setTrashed(true);
       }
       else {
-        copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, linkFlags);
+        copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, studentData);
       }
     }
-  } //
-  catch (err) {
-    errorNotification(err, newFolderId);
-  }
-
-  const studentData = {
-    name: studentName,
-    folderId: newFolderId,
-    satAdminSsId: satAdminSsId,
-    satStudentSsId: satStudentSsId,
-    actAdminSsId: actAdminSsId,
-    actStudentSsId: actStudentSsId
-  }
+  // } //
+  // catch (err) {
+  //   errorNotification(err, getFolderUrl(newFolder));
+  // }
 
   return studentData;
 }
@@ -260,7 +258,7 @@ function linkSatFiles(satAdminSsId, satStudentSsId, studentName='') {
   satAdminSs.getSheetByName('Student responses').getRange('B1').setValue(satStudentSsId);
   satAdminSs.getSheets().forEach(s => {
     const sName = s.getName();
-    const answerSheets = getSatTestCodes(ss);
+    const answerSheets = getSatTestCodes(satAdminSs);
     answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
 
     if (answerSheets.includes(sName)) {

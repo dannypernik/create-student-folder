@@ -640,20 +640,20 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
 }
 
 
-function errorNotification(error, ssId) {
+function errorNotification(error, url) {
   const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
   // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
     .setWidth(500) //optional
     .setHeight(300); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
 
-  const ss = SpreadsheetApp.openById(ssId);
+
   const editorEmails = []
   ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
 
   const message = `
     <p>Error details: ${error.stack}</p>
-    <p><a href="https://docs.google.com/spreadsheets/d/${ssId}" target="_blank">${ss.getName()}</a></p>
+    <p><a href="${url}" target="_blank">${url}</a></p>
     <p>Editors: ${editorEmails}</p>
   `
 
@@ -665,4 +665,8 @@ function errorNotification(error, ssId) {
 
   Logger.log(error.message + '\n\n' + error.stack);
   throw new Error(error.message + '\n\n' + error.stack);
+}
+
+function getFolderUrl(folderId) {
+  return `https://drive.google.com/drive/u/0/folders/${folderId}`
 }
