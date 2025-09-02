@@ -106,14 +106,14 @@ function getFolderIds(sourceFolderId, parentFolderId) {
 }
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', studentData={}) {
-  // try {
+  try {
     const sourceFolder = DriveApp.getFolderById(sourceFolderId);
     const newFolder = DriveApp.getFolderById(newFolderId);
     const newFolderName = newFolder.getName();
     Logger.log(`${newFolderName} folder started`)
 
     var files = sourceFolder.getFiles();
-    let testType//, satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
+    let testType;
 
     if (folderType.toLowerCase() === 'sat') {
       testType = 'SAT';
@@ -131,7 +131,6 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       const file = files.next();
       const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
       let filename = file.getName();
-      Logger.log(filename);
 
       if (prefixFiles.includes(filename)) {
         filename = studentName + ' ' + filename;
@@ -153,23 +152,22 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
       }
 
       if (filename.toLowerCase().includes('answer analysis')) {
-        if (filename.includes('SAT')) {
+        if (filename.includes('SAT') && testType !== 'ACT') {
           studentData.satAdminSsId = newFileId;
         } //
-        else if (filename.includes('ACT')) {
+        else if (filename.includes('ACT') && testType !== 'SAT') {
           studentData.actAdminSsId = newFileId;
         }
       } //
       else if (filename.toLowerCase().includes('student answer sheet')) {
-        if (filename.includes('SAT')) {
+        if (filename.includes('SAT') && testType !== 'ACT') {
           studentData.satStudentSsId = newFileId;
         } //
-        else if (filename.includes('ACT')) {
+        else if (filename.includes('ACT') && testType !== 'SAT') {
           studentData.actStudentSsId = newFileId;
         }
       }
 
-      Logger.log(`${testType} ${studentData.satAdminSsId} ${studentData.satStudentSsId} ${studentData.isSatLinked} ${studentData.isActLinked} ${studentData.actAdminSsId} ${studentData.actStudentSsId}`)
       if (testType !== 'ACT' && !studentData.isSatLinked && studentData.satAdminSsId && studentData.satStudentSsId) {
         linkSatFiles(studentData.satAdminSsId, studentData.satStudentSsId, studentName);
         studentData.isSatLinked = true;
@@ -237,10 +235,10 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
         copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, studentData);
       }
     }
-  // } //
-  // catch (err) {
-  //   errorNotification(err, getFolderUrl(newFolder));
-  // }
+  } //
+  catch (err) {
+    errorNotification(err, getFolderUrl(newFolder));
+  }
 
   return studentData;
 }

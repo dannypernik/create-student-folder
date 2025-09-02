@@ -29,7 +29,7 @@ function transferOldStudentData() {
   syncSatStudentData(oldAdminSsId, startTime);
 }
 
-function syncSatStudentData(oldAdminSsId='18tU184YDfa7bxXVXALAp9IIiUvfbqzrCZabWcXfwJNg', startTime=new Date().getTime()) {
+function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newAdminSsId = newAdminSs.getId()
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
