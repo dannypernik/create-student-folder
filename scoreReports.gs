@@ -82,8 +82,7 @@ async function createSatScoreReportPdf(adminSsId=SpreadsheetApp.getActiveSpreads
 
     Logger.log(studentName + ' ' + currentTestData.test + ' score report complete');
   } catch (err) {
-    const adminFile = DriveApp.getFileById(adminSsId);
-    errorNotification(err, adminFile.getUrl());
+    errorNotification(err, adminSsId);
   }
 }
 
@@ -209,8 +208,7 @@ async function createActScoreReportPdf(adminSsId=SpreadsheetApp.getActiveSpreads
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, `PDF complete`);
     Logger.log(studentName + ' ' + currentTestData.test + ' score report complete');
   } catch (err) {
-    const adminFile = DriveApp.getFileById(adminSsId);
-    errorNotification(err, adminFile.getUrl());
+    errorNotification(err, adminSsId);
   }
 }
 

@@ -1,49 +1,48 @@
-function getStudentData(adminFolderId, testType=null) {
-  const adminFolder = DriveApp.getFolderById(adminFolderId);
-  const adminSubfolders = adminFolder.getFolders();
-  const studentName = adminFolder.getName();
-  let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId;
+function getStudentData(studentFolderId, testType = null) {
+  const studentFolder = DriveApp.getFolderById(studentFolderId);
+  const studentName = studentFolder.getName();
 
-  // get testType from student folder name
+  let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
+
+  // ---------- Infer testType from subfolders if not provided ----------
   if (!testType) {
-    while (adminSubfolders.hasNext()) {
-      const adminSubfolder = adminSubfolders.next();
-      const adminSubfolderName = adminSubfolder.getName();
-
-      if (adminSubfolderName.includes(studentName)) {
-        if (adminSubfolderName.includes('SAT')) {
-          testType = 'sat'
-        } //
-        else if (adminSubfolderName.includes('ACT')) {
-          testType = 'act'
-        }
+    const subfolders = studentFolder.getFolders();
+    while (subfolders.hasNext()) {
+      const subfolder = subfolders.next();
+      const subfolderName = subfolder.getName();
+      if (subfolderName.includes(studentName)) {
+        if (subfolderName.includes('SAT')) testType = 'sat';
+        else if (subfolderName.includes('ACT')) testType = 'act';
         break;
       }
     }
   }
-  
-  const adminFiles = adminFolder.getFiles();
-  while (adminFiles.hasNext()) {
-    const adminFile = adminFiles.next();
-    const adminFileId = adminFile.getId();
 
-    if (testType != 'act' && adminFile.getName().toLowerCase().includes('sat admin answer analysis')) {
-      satAdminSsId = adminFileId;
+  // ---------- Scan files in student folder ----------
+  const files = studentFolder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    const fileName = file.getName().toLowerCase();
+    const fileId = file.getId();
+
+    if (fileName.includes('sat admin answer')) {
+      satAdminSsId = fileId;
       const satAdminSs = SpreadsheetApp.openById(satAdminSsId);
       satStudentSsId = satAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+      const revBackendSheet = satAdminSs.getSheetByName('Rev sheet backend');
 
-      if (testType === 'sat') {
-        break;
+      if (revBackendSheet) {
+        homeworkSsId = revBackendSheet.getRange('U8').getValue() || null;
       }
+
+      if (testType === 'sat') break;
     }
 
-    if (testType != 'sat' && adminFile.getName().toLowerCase().includes('act admin answer analysis')) {
-      actAdminSsId = adminFileId;
-      actStudentSsId = actAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+    if (fileName.includes('act admin answer')) {
+      actAdminSsId = fileId;
+      actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
 
-      if (testType === 'act') {
-        break;
-      }
+      if (testType === 'act') break;
     }
 
     if ((satStudentSsId && actStudentSsId) || (testType === 'sat' && satStudentSsId) || (testType === 'act' && actStudentSsId)) {
@@ -51,35 +50,136 @@ function getStudentData(adminFolderId, testType=null) {
     }
   }
 
+  // ---------- Fallback search if IDs not found ----------
   if (testType !== 'act') {
-    if (!satAdminSsId) {
-      satAdminSsId = findFirstIdBySubstring(adminFolderId, 'sat admin answer', 'file');
-    }
-    if (!satStudentSsId) {
-      satStudentSsId = findFirstIdBySubstring(adminFolderId, 'sat student answer', 'file');
-    }
+    if (!satAdminSsId) satAdminSsId = findFirstIdBySubstring(studentFolderId, 'sat admin answer', 'file');
+    if (!satStudentSsId) satStudentSsId = findFirstIdBySubstring(studentFolderId, 'sat student answer', 'file');
   }
-  
   if (testType !== 'sat') {
-    if (!actAdminSsId) {
-      actAdminSsId = findFirstIdBySubstring(adminFolderId, 'act admin answer', 'file');
-    }
-    if (!actStudentSsId) {
-      actStudentSsId = findFirstIdBySubstring(adminFolderId, 'act student answer', 'file');
-    }
+    if (!actAdminSsId) actAdminSsId = findFirstIdBySubstring(studentFolderId, 'act admin answer', 'file');
+    if (!actStudentSsId) actStudentSsId = findFirstIdBySubstring(studentFolderId, 'act student answer', 'file');
   }
 
+  // ---------- Build studentData ----------
   const studentData = {
     name: studentName,
-    adminFolderId: adminFolderId,
+    folderId: studentFolderId,
     satAdminSsId: satAdminSsId,
     satStudentSsId: satStudentSsId,
     actAdminSsId: actAdminSsId,
     actStudentSsId: actStudentSsId,
-  }
+    homeworkSsId: homeworkSsId,
+    updateComplete: false
+  };
 
   return studentData;
 }
+
+
+function updateStudentsJSON(studentData, studentsJSON) {
+  let existing = studentsJSON.find(obj => obj.folderId === studentData.folderId);
+
+  if (existing) {
+    // Update all fields if they are missing or different
+    for (let key in studentData) {
+      if (studentData[key] && studentData[key] !== existing[key]) {
+        existing[key] = studentData[key];
+        Logger.log(`Updated ${key} for ${studentName}`);
+      }
+    }
+  } //
+  else {
+    studentsJSON.push(studentData);
+    Logger.log(`Added ${studentName} to students data`);
+  }
+  
+  return studentsJSON;
+}
+
+
+function getAllStudentData(
+  client={
+    index: null,
+    name: null,
+    studentsFolderId: null,
+    studentsDataJSON: null
+  })
+  {
+  const index = client.index || 0;
+
+  Logger.log(index + '. ' + client.name + ' started');
+
+  const studentFolders = DriveApp.getFolderById(client.studentsFolderId).getFolders();
+  const studentFolderIds = [];
+  
+  const studentFolderList = sortFoldersByName(studentFolders);
+  for (let i = 0; i < studentFolderList.length; i++) {
+    const studentFolder = studentFolderList[i];
+    const studentFolderId = studentFolder.getId();
+    studentFolderIds.push(studentFolderId);
+
+    const studentData = getStudentData(studentFolderId);
+    client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
+  }
+
+  return client.studentsDataJSON;
+}
+
+// function getStudentFileIds(studentFolderId, studentsJSON) {
+//   const studentFolder = DriveApp.getFolderById(studentFolderId);
+//   const studentFolderName = studentFolder.getName();
+
+//   if (!studentFolderName.includes('Ξ')) {
+//     const studentObj = studentsJSON.find(obj => obj.folderId === studentFolderId);
+//     if (studentObj) {
+//       Logger.log(`${studentFolderName} found with folder ID ${studentFolderId}`);
+
+//       if (studentObj && studentObj.name !== studentFolderName) {
+//         // Update the name property
+//         studentObj.name = studentFolderName;
+//         Logger.log(`Updated name for folder ID ${studentFolderId} to ${studentFolderName}`);
+//       }
+//     }
+//     else {
+//       Logger.log(`Adding ${studentFolderName} to students data`);
+//       const adminFiles = studentFolder.getFiles();
+//       let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
+
+//       while (adminFiles.hasNext()) {
+//         const adminFile = adminFiles.next();
+//         const adminFilename = adminFile.getName().toLowerCase();
+//         const adminFileId = adminFile.getId();
+
+//         if (adminFilename.includes('sat admin answer')) {
+//           satAdminSsId = adminFileId;
+//           satAdminSs = SpreadsheetApp.openById(satAdminSsId);
+//           satStudentSsId = satAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
+//           homeworkSsId = satAdminSs.getSheetByName('Rev sheet backend').getRange('U8').getValue();
+//           if (homeworkSsId) {
+//             Logger.log(`HomeworkSsId found: ${homeworkSsId}`);
+//           }
+//         }
+//         else if (adminFilename.includes('act admin answer')) {
+//           actAdminSsId = adminFileId;
+//           actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
+//         }
+//       }
+
+//       const studentData = {
+//         name: studentFolderName,
+//         folderId: studentFolderId,
+//         satAdminSsId: satAdminSsId,
+//         satStudentSsId: satStudentSsId,
+//         actAdminSsId: actAdminSsId,
+//         actStudentSsId: actStudentSsId,
+//         homeworkSsId: homeworkSsId,
+//         updateComplete: false
+//       }
+
+//       return studentData;
+//     }
+//   }
+// }
 
 
 function getSatTestCodes() {
@@ -358,61 +458,6 @@ function getIdFromDriveUrl(url) {
   return id;
 }
 
-// function getIdFromImportFormula(formulaString) {
-//   if (!formulaString) return "";
-
-//   const formula = formulaString.toString().trim();
-
-//   // 1. Get everything between first "(" and first ","
-//   const openParen = formula.indexOf("(");
-//   const comma = formula.indexOf(",");
-//   if (openParen === -1 || comma === -1 || comma < openParen) return "";
-
-//   let firstArg = formula.substring(openParen + 1, comma).trim();
-
-//   // 2. Remove wrapping quotes if present
-//   if ((firstArg.startsWith('"') && firstArg.endsWith('"'))) {
-//     firstArg = firstArg.slice(1, -1);
-//   }
-
-//   // 3. If it contains "/", assume URL
-//   if (firstArg.includes("/")) {
-//     // Extract ID if possible
-//     const urlMatch = firstArg.match(/\/d\/([a-zA-Z0-9-_]+)/);
-//     return urlMatch ? urlMatch[1] : "";
-//   }
-
-//   // 4. If it's a cell reference
-//   if (/^[A-Z]+\d+|^\$?[A-Z]+\$?\d+$/.test(firstArg) || firstArg.includes("!")) {
-//     const ss = SpreadsheetApp.getActiveSpreadsheet();
-//     let sheet, cellRef;
-
-//     if (firstArg.includes("!")) {
-//       const parts = firstArg.split("!");
-//       const sheetName = parts[0].replace(/^'|'$/g, ""); // remove quotes around sheet name
-//       cellRef = parts[1];
-//       sheet = ss.getSheetByName(sheetName);
-//     } //
-//     else {
-//       // Reference from same sheet
-//       sheet = SpreadsheetApp.getActiveRange().getSheet();
-//       cellRef = firstArg;
-//     }
-    
-//     if (!sheet) return "";
-//     const value = sheet.getRange(cellRef).getValue().toString().trim();
-//     return value;
-//   } 
-
-//   // 5. Otherwise, treat as raw ID and test
-//   try {
-//     SpreadsheetApp.openById(firstArg); // throws if invalid
-//     return firstArg;
-//   } catch (e) {
-//     errorNotification(e, ss.getId());
-//   }
-// }
-
 function getIdFromImportFormula(cell) {
   const formulaString = cell.getFormula();
   if (!formulaString) return "";
@@ -463,6 +508,21 @@ function getIdFromImportFormula(cell) {
   } catch (e) {
     return ""; // avoid recursive errorNotification loop
   }
+}
+
+
+function sortFoldersByName(folderIterator) {
+  if (!folderIterator.hasNext()) return [];
+  
+  const folderList = [];
+  while (folderIterator.hasNext()) {
+    const folder = folderIterator.next();
+    folderList.push(folder);
+  }
+
+  folderList.sort((a, b) => a.getName().localeCompare(b.getName()));
+
+  return folderList;
 }
 
 
@@ -572,10 +632,10 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
   const adminSs = SpreadsheetApp.openById(adminSsId);
   const adminFolder = DriveApp.getFileById(adminSsId).getParents().next();
   const adminSubfolders = adminFolder.getFolders();
-  let studentName, scoreReportFolder, scoreReportFolderId, studentFolder;
+  let studentName, scoreReportFolder, scoreReportFolderId, studentFolder, revBackendSheet;
 
   if (ssType === 'sat') {
-    const revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
+    revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
     if (revBackendSheet) {
       studentName = revBackendSheet.getRange('K2').getValue();
       scoreReportFolderId = revBackendSheet.getRange('U9').getValue();
@@ -640,23 +700,23 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
 }
 
 
-function errorNotification(error, url) {
+function errorNotification(error, id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
   // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
     .setWidth(500) //optional
     .setHeight(300); //optional
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
 
-
   const editorEmails = []
   ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
 
+  const url = getDriveUrl(id);
   const message = `
     <p>Error details: ${error.stack}</p>
     <p><a href="${url}" target="_blank">${url}</a></p>
     <p>Editors: ${editorEmails}</p>
   `
-
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
     subject: `Spreadsheet error: ${error.message}`,
@@ -667,6 +727,19 @@ function errorNotification(error, url) {
   throw new Error(error.message + '\n\n' + error.stack);
 }
 
-function getFolderUrl(folderId) {
-  return `https://drive.google.com/drive/u/0/folders/${folderId}`
+function getDriveUrl(id) {
+  const file = DriveApp.getFileById(id);
+  if (file) {
+    return file.getUrl();
+  } //
+  else {
+    const folder = DriveApp.getFolderById(id);
+    
+    if (folder) {
+      return folder.getUrl();
+    }
+    else {
+      Logger.log('ID not recognized as file or folder');
+    }
+  }
 }

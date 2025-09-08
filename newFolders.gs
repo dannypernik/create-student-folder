@@ -237,7 +237,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
     }
   } //
   catch (err) {
-    errorNotification(err, getFolderUrl(newFolder));
+    errorNotification(err, newFolder.getId());
   }
 
   return studentData;

@@ -143,8 +143,7 @@ function createRevSheet(sub, subIndex) {
       }
     }
     catch(err) {
-      const ssFile = DriveApp.getFileById(ssId);
-      errorNotification(err, ssFile.getUrl());
+      errorNotification(err, ssId);
     }
 
     Logger.log('Rev folder logic complete');
@@ -264,8 +263,7 @@ function createRevSheet(sub, subIndex) {
       .setHeight(50); //optional
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev sheet complete');
   } catch (err) {
-    const ssFile = DriveApp.getFileById(ssId);
-    errorNotification(err, ssFile.getUrl());
+    errorNotification(err, ssId);
   }
 }
 

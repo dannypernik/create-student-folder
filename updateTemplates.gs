@@ -214,8 +214,7 @@ function updateConceptData(adminSsId, studentSsId = null) {
     }
   }
   catch (err) {
-    const adminFile = DriveApp.getFileById(adminSsId);
-    errorNotification(err, adminFile.getUrl());
+    errorNotification(err, adminSsId);
   }
 }
 
@@ -246,20 +245,13 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
   }
 
   const studentsFolder = DriveApp.getFolderById(studentsFolderId);
-  const adminFolders = studentsFolder.getFolders();
-  const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
-  const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
   const allStudentDataCell = revBackendSheet.getRange(dataRow, 24);
   const allStudentDataValue = allStudentDataCell.getValue();
   const allStudentData = allStudentDataValue ? JSON.parse(allStudentDataValue) : [];
   const allCompletedAdminFolderIds = allStudentData.map(s => s.adminFolderId);
-
-  const adminFolderList = [];
-  while (adminFolders.hasNext()) {
-    const adminFolder = adminFolders.next();
-    adminFolderList.push(adminFolder);
-  }
-  adminFolderList.sort((a, b) => a.getName().localeCompare(b.getName()));
+  
+  const adminFolders = studentsFolder.getFolders();
+  const adminFolderList = sortFoldersByName(adminFolders); 
   
   let startingFolderIndexCell = revBackendSheet.getRange(dataRow, 26);
   let startingFolderIndex = startingFolderIndexCell.getValue() || 0;
@@ -268,11 +260,12 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
 
   for (let i = startingFolderIndex; i < adminFolderList.length; i ++) {
     const adminFolder = adminFolderList[i];
+    const adminFolderId = adminFolder.getId();
     Logger.log(`Starting ${adminFolder.getName()}`);
-    const adminFolderIndex = adminFolderList.findIndex(folder => folder.getId() === adminFolder.getId());
-    const studentData = getStudentData(adminFolder.getId(), 'sat');
+    const adminFolderIndex = adminFolderList.findIndex(folder => folder.getId() === adminFolderId);
+    const studentData = getStudentData(adminFolderId, 'sat');
 
-    if (!allCompletedAdminFolderIds.includes(studentData.adminFolderId)) {
+    if (!allCompletedAdminFolderIds.includes(studentData.folderId)) {
       if (studentData.satAdminSsId) {
         const htmlOutput = HtmlService.createHtmlOutput(`${adminFolderIndex + 1} of ${adminFolderList.length}`)
           .setWidth(400)
@@ -312,20 +305,6 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
   allStudentDataCell.clear();
 }
 
-// function updateSatWorksheetLinks() {
-//   SpreadsheetApp.getUi().alert('Function under construction');
-//   return;
-
-//   const templateSs = SpreadsheetApp.getActiveSpreadsheet();
-//   const revBackendSheet = templateSs.getSheetByName('Rev sheet backend');
-//   const satAdminDataSsId = revBackendSheet.getRange('U5').getValue();
-//   const satAdminDataSs = SpreadsheetApp.openById(satAdminDataSsId);
-//   const linksImportCell = satAdminDataSs.getSheetByName('Links').getRange('A1');
-//   linksImportValue = `=importrange("1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE","Links!I1:O50")`;
-//   linksImportCell.setValue(linksImportValue);
-  
-//   SpreadsheetApp.getUi().alert('Worksheets updated');
-// }
 
 function updateSatWorksheetLinks() {
   const templateAdminSs = SpreadsheetApp.getActiveSpreadsheet();
@@ -582,7 +561,7 @@ function findClientFileIds() {
     studentsDataJSON: studentsJSON
   }
 
-  const students = getAllStudentFileIds(client);
+  const students = getAllStudentData(client);
   studentsStr = JSON.stringify(students);
   clientData[8][1] = studentsStr;
 
@@ -591,102 +570,6 @@ function findClientFileIds() {
   return client;
 }
 
- function getAllStudentFileIds(
-  client={
-    index: null,
-    name: null,
-    studentsFolderId: null,
-    studentsDataJSON: null
-  })
-  {
-  const index = client.index || 0;
-
-  Logger.log(index + '. ' + client.name + ' started');
-
-  const studentFolders = DriveApp.getFolderById(client.studentsFolderId).getFolders();
-  let students = client.studentsDataJSON;
-  const studentFolderIds = [];
-
-  while (studentFolders.hasNext()) {
-    const studentFolder = studentFolders.next();
-    const studentFolderId = studentFolder.getId();
-    const studentFolderName = studentFolder.getName();
-
-    studentFolderIds.push(studentFolderId);
-
-    if (!studentFolderName.includes('Ξ')) {
-      const studentObj = students.find(obj => obj.folderId === studentFolderId);
-      if (studentObj) {
-        Logger.log(`${studentFolderName} found with folder ID ${studentFolderId}`);
-
-        if (studentObj && studentObj.name !== studentFolderName) {
-          // Update the name property
-          studentObj.name = studentFolderName;
-          Logger.log(`Updated name for folder ID ${studentFolderId} to ${studentFolderName}`);
-        }
-      }
-      else {
-        Logger.log(`Adding ${studentFolderName} to students data`);
-        const adminFiles = studentFolder.getFiles();
-        let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
-
-        while (adminFiles.hasNext()) {
-          const adminFile = adminFiles.next();
-          const adminFilename = adminFile.getName().toLowerCase();
-          const adminFileId = adminFile.getId();
-
-          if (adminFilename.includes('sat admin answer')) {
-            satAdminSsId = adminFileId;
-            satStudentSsId = SpreadsheetApp.openById(satAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
-          }
-          else if (adminFilename.includes('act admin answer')) {
-            actAdminSsId = adminFileId;
-            actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
-          }
-        }
-
-        students.push({
-          name: studentFolderName,
-          folderId: studentFolderId,
-          satAdminSsId: satAdminSsId,
-          satStudentSsId: satStudentSsId,
-          actAdminSsId: actAdminSsId,
-          actStudentSsId: actStudentSsId,
-          updateComplete: false
-        })
-      }
-    }
-
-    // only for clients with grouped student folders
-    // const subfolders = studentFolder.getFolders();
-    // while (subfolders.hasNext()) {
-    //   const subfolder = subfolders.next();
-    //   const subfiles = subfolder.getFiles();
-
-    //   while (subfiles.hasNext()) {
-    //     const subfile = subfiles.next();
-    //     if (subfile.getName().toLowerCase().includes('sat admin')) {
-    //       satAdminSsId = subfile.getId();
-    //       break;
-    //     }
-    //   }
-
-    //   if (satAdminSsId) {
-    //     satStudentSsId = SpreadsheetApp.openById(satAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
-    //   }
-
-    //   students.push({
-    //     'name': subfolder.getName(),
-    //     'satAdminSsId': satAdminSsId,
-    //     'satStudentSsId': satStudentSsId
-    //   })
-    // }
-  }
-
-  students = students.filter(student => studentFolderIds.includes(student.folderId));
-
-  return students;
-}
 
 function ssUpdate202505(students = {}, client = {}) {
   const qbResArrayVal =
