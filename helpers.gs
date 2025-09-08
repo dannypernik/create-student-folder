@@ -80,19 +80,22 @@ function updateStudentsJSON(studentData, studentsJSON) {
   let existing = studentsJSON.find(obj => obj.folderId === studentData.folderId);
 
   if (existing) {
-    // Update all fields if they are missing or different
+    let changed = false;
     for (let key in studentData) {
       if (studentData[key] && studentData[key] !== existing[key]) {
         existing[key] = studentData[key];
-        Logger.log(`Updated ${key} for ${studentName}`);
+        Logger.log(`Updated ${key} for ${studentData.name}`);
+        changed = true;
       }
     }
-  } //
-  else {
+    if (!changed) {
+      Logger.log(`No changes for ${studentData.name}`);
+    }
+  } else {
     studentsJSON.push(studentData);
-    Logger.log(`Added ${studentName} to students data`);
+    Logger.log(`Added ${studentData.name} to students data`);
   }
-  
+
   return studentsJSON;
 }
 
@@ -111,7 +114,7 @@ function getAllStudentData(
 
   const studentFolders = DriveApp.getFolderById(client.studentsFolderId).getFolders();
   const studentFolderIds = [];
-  
+
   const studentFolderList = sortFoldersByName(studentFolders);
   for (let i = 0; i < studentFolderList.length; i++) {
     const studentFolder = studentFolderList[i];
@@ -471,7 +474,7 @@ function getIdFromImportFormula(cell) {
   let firstArg = argMatch[1].trim();
 
   // 2. Strip wrapping quotes
-  if ((firstArg.startsWith('"') && firstArg.endsWith('"')) || 
+  if ((firstArg.startsWith('"') && firstArg.endsWith('"')) ||
       (firstArg.startsWith("'") && firstArg.endsWith("'"))) {
     firstArg = firstArg.slice(1, -1);
   }
@@ -513,7 +516,7 @@ function getIdFromImportFormula(cell) {
 
 function sortFoldersByName(folderIterator) {
   if (!folderIterator.hasNext()) return [];
-  
+
   const folderList = [];
   while (folderIterator.hasNext()) {
     const folder = folderIterator.next();
@@ -540,7 +543,7 @@ function formatDateYYYYMMDD(dateStr) {
     const yyyy = date.getFullYear();
     return `${yyyy}-${mm}-${dd}`;
   }
-   
+
    return null;
 }
 
@@ -687,14 +690,14 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
       scoreReportFolderId = adminFolder.createFolder('Score reports').getId();
     }
   }
-  
+
   if (ssType === 'sat') {
     revBackendSheet.getRange('T9:U9').setValues([['Score report folder ID:', scoreReportFolderId]]);
   }
   else if (ssType === 'act') {
     dataSheet.getRange('V1:W1').setValues([['Score report folder ID:', scoreReportFolderId]]);
   }
-  
+
   Logger.log(scoreReportFolderId);
   return scoreReportFolderId;
 }
@@ -734,7 +737,7 @@ function getDriveUrl(id) {
   } //
   else {
     const folder = DriveApp.getFolderById(id);
-    
+
     if (folder) {
       return folder.getUrl();
     }
