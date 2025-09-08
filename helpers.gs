@@ -91,7 +91,8 @@ function updateStudentsJSON(studentData, studentsJSON) {
     if (!changed) {
       Logger.log(`No changes for ${studentData.name}`);
     }
-  } else {
+  } //
+  else {
     studentsJSON.push(studentData);
     Logger.log(`Added ${studentData.name} to students data`);
   }
