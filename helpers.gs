@@ -1,3 +1,42 @@
+function getAllStudentData(
+  client={
+    index: null,
+    name: null,
+    studentsFolderId: null,
+    studentsDataJSON: null
+  },
+  checkAllKeys=false)
+  {
+  const index = client.index || 0;
+
+  Logger.log(index + '. ' + client.name + ' started');
+
+  const studentFolders = DriveApp.getFolderById(client.studentsFolderId).getFolders();
+  const studentFolderIds = [];
+
+  const studentFolderList = sortFoldersByName(studentFolders);
+  for (let i = 0; i < studentFolderList.length; i++) {
+    const studentFolder = studentFolderList[i];
+    const studentFolderId = studentFolder.getId();
+    studentFolderIds.push(studentFolderId);
+    const studentName = studentFolder.getName();
+
+    if (!studentName.includes('Ξ')) {
+      const isStudentFolderIdPresent = client.studentsDataJSON.some(obj => obj.folderId === studentFolderId);
+      if (!isStudentFolderIdPresent || checkAllKeys) {
+        const studentData = getStudentData(studentFolderId);
+        client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
+      }
+      else {
+        Logger.log(`${studentName} unchanged`);
+      }
+    }
+  }
+
+  return client.studentsDataJSON;
+}
+
+
 function getStudentData(studentFolderId, testType = null) {
   const studentFolder = DriveApp.getFolderById(studentFolderId);
   const studentName = studentFolder.getName();
@@ -33,6 +72,11 @@ function getStudentData(studentFolderId, testType = null) {
 
       if (revBackendSheet) {
         homeworkSsId = revBackendSheet.getRange('U8').getValue();
+        const homeworkSs = DriveApp.getFileById(homeworkSsId);
+
+        if (homeworkSs) {
+          homeworkSs.addEditor(ADMIN_EMAIL);
+        }
       }
 
       if (testType === 'sat') break;
@@ -69,7 +113,7 @@ function getStudentData(studentFolderId, testType = null) {
     actAdminSsId: actAdminSsId,
     actStudentSsId: actStudentSsId,
     homeworkSsId: homeworkSsId,
-    updateComplete: false
+    updateComplete: true
   };
 
   return studentData;
@@ -101,36 +145,7 @@ function updateStudentsJSON(studentData, studentsJSON) {
 }
 
 
-function getAllStudentData(
-  client={
-    index: null,
-    name: null,
-    studentsFolderId: null,
-    studentsDataJSON: null
-  })
-  {
-  const index = client.index || 0;
 
-  Logger.log(index + '. ' + client.name + ' started');
-
-  const studentFolders = DriveApp.getFolderById(client.studentsFolderId).getFolders();
-  const studentFolderIds = [];
-
-  const studentFolderList = sortFoldersByName(studentFolders);
-  for (let i = 0; i < studentFolderList.length; i++) {
-    const studentFolder = studentFolderList[i];
-    const studentFolderId = studentFolder.getId();
-    studentFolderIds.push(studentFolderId);
-
-    // Only run if studentFolderId is not present as a folderId in studentsDataJSON
-    if (!client.studentsDataJSON.some(obj => obj.folderId === studentFolderId)) {
-      const studentData = getStudentData(studentFolderId);
-      client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
-    }
-  }
-
-  return client.studentsDataJSON;
-}
 
 // function getStudentFileIds(studentFolderId, studentsJSON) {
 //   const studentFolder = DriveApp.getFolderById(studentFolderId);
