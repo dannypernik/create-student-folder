@@ -15,21 +15,20 @@ function getAllStudentData(
   const studentFolderIds = [];
 
   const studentFolderList = sortFoldersByName(studentFolders);
-  for (let i = 0; i < studentFolderList.length; i++) {
-    const studentFolder = studentFolderList[i];
+  for (const studentFolder of studentFolderList) {
     const studentFolderId = studentFolder.getId();
     studentFolderIds.push(studentFolderId);
-    const studentName = studentFolder.getName();
+    const studentFolderObject = client.studentsDataJSON.find(obj => obj.folderId === studentFolderId);
 
-    if (!studentName.includes('Ξ')) {
-      const studentFolderObject = client.studentsDataJSON.find(obj => obj.folderId === studentFolderId);
-      if (!studentFolderObject || !studentFolderObject.updateComplete || checkAllKeys) {
+    if (!studentFolderObject || !studentFolderObject.updateComplete || checkAllKeys) {
+      const studentName = studentFolder.getName();
+      if (!studentName.includes('Ξ')) {
         const studentData = getStudentData(studentFolderId);
         client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
       }
-      else {
-        Logger.log(`${studentName} unchanged`);
-      }
+    } //
+    else {
+      Logger.log(`${studentName} skipped`);
     }
   }
 
@@ -72,9 +71,9 @@ function getStudentData(studentFolderId, testType = null) {
 
       if (revBackendSheet) {
         homeworkSsId = revBackendSheet.getRange('U8').getValue();
-        const homeworkSs = DriveApp.getFileById(homeworkSsId);
 
-        if (homeworkSs) {
+        if (homeworkSsId) {
+          const homeworkSs = DriveApp.getFileById(homeworkSsId);
           homeworkSs.addEditor(ADMIN_EMAIL);
         }
       }
@@ -539,12 +538,12 @@ function sortFoldersByName(folderIterator) {
   const folderList = [];
   while (folderIterator.hasNext()) {
     const folder = folderIterator.next();
-    folderList.push(folder);
+    folderList.push({folder, name: folder.getName()});
   }
 
-  folderList.sort((a, b) => a.getName().localeCompare(b.getName()));
+  folderList.sort((a, b) => a.name.localeCompare(b.name));
 
-  return folderList;
+  return folderList.map(obj => obj.folder);
 }
 
 
