@@ -22,8 +22,8 @@ function getAllStudentData(
     const studentName = studentFolder.getName();
 
     if (!studentName.includes('Ξ')) {
-      const isStudentFolderIdPresent = client.studentsDataJSON.some(obj => obj.folderId === studentFolderId);
-      if (!isStudentFolderIdPresent || checkAllKeys) {
+      const studentFolderObject = client.studentsDataJSON.find(obj => obj.folderId === studentFolderId);
+      if (!studentFolderObject || !studentFolderObject.updateComplete || checkAllKeys) {
         const studentData = getStudentData(studentFolderId);
         client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
       }
