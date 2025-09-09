@@ -32,7 +32,7 @@ function getStudentData(studentFolderId, testType = null) {
       const revBackendSheet = satAdminSs.getSheetByName('Rev sheet backend');
 
       if (revBackendSheet) {
-        homeworkSsId = revBackendSheet.getRange('U8').getValue() || null;
+        homeworkSsId = revBackendSheet.getRange('U8').getValue();
       }
 
       if (testType === 'sat') break;
@@ -84,17 +84,17 @@ function updateStudentsJSON(studentData, studentsJSON) {
     for (let key in studentData) {
       if (studentData[key] && studentData[key] !== existing[key]) {
         existing[key] = studentData[key];
-        Logger.log(`Updated ${key} for ${studentData.name}`);
+        Logger.log(`${studentData.name} ${key} updated`);
         changed = true;
       }
     }
     if (!changed) {
-      Logger.log(`No changes for ${studentData.name}`);
+      Logger.log(`${studentData.name} unchanged`);
     }
   } //
   else {
     studentsJSON.push(studentData);
-    Logger.log(`Added ${studentData.name} to students data`);
+    Logger.log(`${studentData.name} added`);
   }
 
   return studentsJSON;
