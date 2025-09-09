@@ -122,8 +122,11 @@ function getAllStudentData(
     const studentFolderId = studentFolder.getId();
     studentFolderIds.push(studentFolderId);
 
-    const studentData = getStudentData(studentFolderId);
-    client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
+    // Only run if studentFolderId is not present as a folderId in studentsDataJSON
+    if (!client.studentsDataJSON.some(obj => obj.folderId === studentFolderId)) {
+      const studentData = getStudentData(studentFolderId);
+      client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
+    }
   }
 
   return client.studentsDataJSON;
