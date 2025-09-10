@@ -19,9 +19,9 @@ function getAllStudentData(
     const studentFolderId = studentFolder.getId();
     studentFolderIds.push(studentFolderId);
     const studentFolderObject = client.studentsDataJSON.find(obj => obj.folderId === studentFolderId);
+    const studentName = studentFolder.getName();
 
     if (!studentFolderObject || !studentFolderObject.updateComplete || checkAllKeys) {
-      const studentName = studentFolder.getName();
       if (!studentName.includes('Ξ')) {
         const studentData = getStudentData(studentFolderId);
         client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
@@ -74,7 +74,13 @@ function getStudentData(studentFolderId, testType = null) {
 
         if (homeworkSsId) {
           const homeworkSs = DriveApp.getFileById(homeworkSsId);
-          homeworkSs.addEditor(ADMIN_EMAIL);
+          const editors = homeworkSs.getEditors();
+          editorEmails = editors.map(editor => editor.getEmail());
+
+          if (!editorEmails.includes(ADMIN_EMAIL)){
+            Logger.log('Added editor');
+            homeworkSs.addEditor(ADMIN_EMAIL);
+          }
         }
       }
 
@@ -144,65 +150,6 @@ function updateStudentsJSON(studentData, studentsJSON) {
 }
 
 
-
-
-// function getStudentFileIds(studentFolderId, studentsJSON) {
-//   const studentFolder = DriveApp.getFolderById(studentFolderId);
-//   const studentFolderName = studentFolder.getName();
-
-//   if (!studentFolderName.includes('Ξ')) {
-//     const studentObj = studentsJSON.find(obj => obj.folderId === studentFolderId);
-//     if (studentObj) {
-//       Logger.log(`${studentFolderName} found with folder ID ${studentFolderId}`);
-
-//       if (studentObj && studentObj.name !== studentFolderName) {
-//         // Update the name property
-//         studentObj.name = studentFolderName;
-//         Logger.log(`Updated name for folder ID ${studentFolderId} to ${studentFolderName}`);
-//       }
-//     }
-//     else {
-//       Logger.log(`Adding ${studentFolderName} to students data`);
-//       const adminFiles = studentFolder.getFiles();
-//       let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
-
-//       while (adminFiles.hasNext()) {
-//         const adminFile = adminFiles.next();
-//         const adminFilename = adminFile.getName().toLowerCase();
-//         const adminFileId = adminFile.getId();
-
-//         if (adminFilename.includes('sat admin answer')) {
-//           satAdminSsId = adminFileId;
-//           satAdminSs = SpreadsheetApp.openById(satAdminSsId);
-//           satStudentSsId = satAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
-//           homeworkSsId = satAdminSs.getSheetByName('Rev sheet backend').getRange('U8').getValue();
-//           if (homeworkSsId) {
-//             Logger.log(`HomeworkSsId found: ${homeworkSsId}`);
-//           }
-//         }
-//         else if (adminFilename.includes('act admin answer')) {
-//           actAdminSsId = adminFileId;
-//           actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
-//         }
-//       }
-
-//       const studentData = {
-//         name: studentFolderName,
-//         folderId: studentFolderId,
-//         satAdminSsId: satAdminSsId,
-//         satStudentSsId: satStudentSsId,
-//         actAdminSsId: actAdminSsId,
-//         actStudentSsId: actStudentSsId,
-//         homeworkSsId: homeworkSsId,
-//         updateComplete: false
-//       }
-
-//       return studentData;
-//     }
-//   }
-// }
-
-
 function getSatTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
@@ -217,12 +164,6 @@ function getSatTestCodes() {
 
 
 function getActTestData(ssId, testCode) {
-  // const completedEnglishCount = allData.filter((row) => row[0] === testCode && row[1] === 'English' && row[7] !== '').length;
-  // const completedMathCount = allData.filter((row) => row[0] === testCode && row[1] === 'Math' && row[7] !== '').length;
-  // const completedReadingCount = allData.filter((row) => row[0] === testCode && row[1] === 'Reading' && row[7] !== '').length;
-  // const completedScienceCount = allData.filter((row) => row[0] === testCode && row[1] === 'Science' && row[7] !== '').length;
-
-  // if (completedEnglishCount > 37 && completedMathCount > 30 && completedReadingCount > 20 && completedScienceCount > 20) {
   const ss = SpreadsheetApp.openById(ssId);
   let testSheet = ss.getSheetByName(testCode);
 
@@ -266,13 +207,8 @@ function getActTestCodes() {
 }
 
 
-function addSatTestSheets(adminSsId) {
+function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   const testCodes = getSatTestCodes();
-
-  if (!adminSsId) {
-    adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
-  }
-
   const adminSs = SpreadsheetApp.openById(adminSsId);
   const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('satAdminTemplateSsId'));
   const adminTemplateSheet = adminTemplateSs.getSheetByName('SAT4');
