@@ -71,17 +71,6 @@ function getStudentData(studentFolderId, testType = null) {
 
       if (revBackendSheet) {
         homeworkSsId = revBackendSheet.getRange('U8').getValue();
-
-        if (homeworkSsId) {
-          const homeworkSs = DriveApp.getFileById(homeworkSsId);
-          const editors = homeworkSs.getEditors();
-          editorEmails = editors.map(editor => editor.getEmail());
-
-          if (!editorEmails.includes(ADMIN_EMAIL)){
-            Logger.log('Added editor');
-            homeworkSs.addEditor(ADMIN_EMAIL);
-          }
-        }
       }
 
       if (testType === 'sat') break;
@@ -89,9 +78,22 @@ function getStudentData(studentFolderId, testType = null) {
 
     if (fileName.includes('act admin answer')) {
       actAdminSsId = fileId;
-      actStudentSsId = SpreadsheetApp.openById(actAdminSsId).getSheetByName('Student responses').getRange('B1').getValue();
+      const adminSs = SpreadsheetApp.openById(actAdminSsId);
+      actStudentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
+      homeworkSsId = adminSs.getSheetByName('Data').getRange('U2').getValue();
 
       if (testType === 'act') break;
+    }
+
+    if (homeworkSsId) {
+      const homeworkSs = DriveApp.getFileById(homeworkSsId);
+      const editors = homeworkSs.getEditors();
+      editorEmails = editors.map(editor => editor.getEmail());
+
+      if (!editorEmails.includes(ADMIN_EMAIL)){
+        Logger.log('Added editor');
+        homeworkSs.addEditor(ADMIN_EMAIL);
+      }
     }
 
     if ((satStudentSsId && actStudentSsId) || (testType === 'sat' && satStudentSsId) || (testType === 'act' && actStudentSsId)) {
