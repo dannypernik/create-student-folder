@@ -19,9 +19,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const isAdminSs = (id === adminSsId);
 
       for (subject of subjectData) {
-        const sh = ss.getSheetByName(subject.name)
-        const conceptData = getConceptHeaderRows(ss, subject);
+        const sh = ss.getSheetByName(subject.name);
+        
+        const mergeRanges = sh.getDataRange().getMergedRanges();
+        mergeRanges.forEach(range => range.breakApart());
 
+        const conceptData = getConceptHeaderRows(ss, subject);
         for (concept of conceptData) {
           for (let level = 1; level < 4; level ++) {
             let count = 0;
@@ -148,6 +151,7 @@ function updateConceptData(adminSsId, studentSsId = null) {
         }
 
         modifyConceptFormatRules(sh, isAdminSs);
+        mergeRanges.forEach(range => range.merge());
       }
 
       if (isAdminSs) {
