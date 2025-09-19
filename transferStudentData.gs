@@ -271,14 +271,14 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   catch (err) {
     errorNotification(err, newAdminSsId);
   }
-
-  // revert student ID and SS permissions
-  newStudentData.getRange('A3').setValue(initialImportFunction);
-  newStudentData.getRange('H3').setValue('');
-  newStudentData.getRange('T3').setValue('');
-  DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
-  DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-
+  finally {
+    // revert student ID and SS permissions
+    newStudentData.getRange('A3').setValue(initialImportFunction);
+    newStudentData.getRange('H3').setValue('');
+    newStudentData.getRange('T3').setValue('');
+    DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  }
   let htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
     .setWidth(250)
     .setHeight(50);
