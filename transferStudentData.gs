@@ -185,8 +185,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     let allNewAdminSheetValues = [];
     let allNewStudentSheetValues = [];
 
-    for (let s in answerSheets) {
-      let sheetName = answerSheets[s];
+    for (const sheetName of answerSheets) {
       let newAdminSheet = newAdminSs.getSheetByName(sheetName);
       let newStudentSheet = newStudentSs.getSheetByName(sheetName);
 
