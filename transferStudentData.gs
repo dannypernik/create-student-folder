@@ -15,12 +15,6 @@ function transferOldStudentData() {
     return;
   }
 
-  let htmlOutput = HtmlService
-      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the new admin AND new student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
-      .setWidth(400)
-      .setHeight(150);
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
-
   let oldAdminSsId = getIdFromDriveUrl(oldAdminDataUrl);
   if (!oldAdminSsId) {
     oldAdminSsId = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -30,6 +24,12 @@ function transferOldStudentData() {
 }
 
 function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
+  let htmlOutput = HtmlService
+      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the new admin AND new student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
+      .setWidth(400)
+      .setHeight(150);
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
+
   const newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
   const newAdminSsId = newAdminSs.getId()
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
@@ -117,14 +117,14 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
             if (newStudentRevDataCell) {
               newRevDataCell.setValue(oldRevDataId);
               newStudentRevDataCell.setValue(oldRevDataId);
-              let htmlOutput = HtmlService
+              htmlOutput = HtmlService
                 .createHtmlOutput('<p></p><button onclick="google.script.host.close()">OK</button>')
                 .setWidth(400)
                 .setHeight(150);
               SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Rev Data sheet updated');
             }
             else {
-              let htmlOutput = HtmlService
+              htmlOutput = HtmlService
                 .createHtmlOutput('<p></p><button onclick="google.script.host.close()">OK</button>')
                 .setWidth(400)
                 .setHeight(150);
@@ -279,7 +279,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
     DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
   }
-  let htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
+  htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
     .setWidth(250)
     .setHeight(50);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Data transfer complete');
