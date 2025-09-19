@@ -65,6 +65,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
       if(filter) {
         filter.remove();
       }
+      SpreadsheetApp.flush();
       newPracticeDataSheet.getRange(1, 1, newPracticeDataSheet.getMaxRows(), 13).createFilter();
       let reviewedRange = newPracticeDataSheet.getRange('M2:M10000');
       reviewedStartCell.autoFill(reviewedRange, SpreadsheetApp.AutoFillSeries.DEFAULT_SERIES);
