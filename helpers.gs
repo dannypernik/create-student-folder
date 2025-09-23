@@ -3,7 +3,7 @@ function getAllStudentData(
     index: null,
     name: null,
     studentsFolderId: null,
-    studentsDataJSON: null
+    studentsData: null
   },
   checkAllKeys=false)
   {
@@ -17,47 +17,89 @@ function getAllStudentData(
   const studentFolderList = sortFoldersByName(studentFolders);
   for (const studentFolder of studentFolderList) {
     const studentFolderId = studentFolder.getId();
-    studentFolderIds.push(studentFolderId);
-    const studentFolderObject = client.studentsDataJSON.find(obj => obj.folderId === studentFolderId);
     const studentName = studentFolder.getName();
+    studentFolderIds.push(studentFolderId);
+    let studentObj = client.studentsData.find(obj => obj.folderId === studentFolderId);
 
-    if (!studentFolderObject || !studentFolderObject.updateComplete || checkAllKeys) {
-      if (!studentName.includes('Ξ')) {
-        const studentData = getStudentData(studentFolderId);
-        client.studentsDataJSON = updateStudentsJSON(studentData, client.studentsDataJSON);
-      }
-    } //
-    else {
-      Logger.log(`${studentName} skipped`);
+    if (studentName.includes('Ξ')) {
+      continue;
     }
+
+    if ((!studentObj) || (checkAllKeys && !studentObj.updateComplete)) {
+      if (!studentObj) {
+        studentObj = { folderId: studentFolderId };
+      }
+      studentObj = getStudentData(studentObj);
+      Logger.log(`All data checked for ${studentName}`);
+      continue;
+    } //
+    
+    if (!studentObj.testType) {
+      studentObj.testType = getStudentTestType(studentObj.folderId, studentName);
+      Logger.log(`${studentName} testType = ${studentObj.testType}`);
+    }
+
+    if ((!studentObj.satAdminSsId && studentObj.testType !== 'act') || (!studentObj.actAdminSsId && studentObj.testType !== 'sat')) {
+      const ssIdObj = getSsIds(studentObj.folderId, studentObj.testType);
+      studentObj.satAdminSsId = ssIdObj.satAdminSsId;
+      studentObj.satStudentSsId = ssIdObj.satStudentSsId;
+      studentObj.actAdminSsId = ssIdObj.actAdminSsId;
+      studentObj.actStudentSsId = ssIdObj.actStudentSsId;
+      studentObj.homeworkSsId = ssIdObj.homeworkSsId;
+      if (studentObj.homeworkSsId) {
+        Logger.log(`${studentName} ssIds updated with homeworkSsId = ${studentObj.homeworkSsId}`);
+      } //
+      else {
+        Logger.log(`${studentName} ssIds updated`);
+      }
+    }
+    studentObj.name = studentName;
+    studentObj.updateComplete = true
+    client.studentsData = updateStudentsJSON(studentObj, client.studentsData);
   }
 
-  return client.studentsDataJSON;
+  return client.studentsData;
 }
 
+function getStudentData(studentData={}) {
+  const studentFolder = DriveApp.getFolderById(studentData.folderId);
+  studentData.name = studentFolder.getName();
 
-function getStudentData(studentFolderId, testType = null) {
-  const studentFolder = DriveApp.getFolderById(studentFolderId);
-  const studentName = studentFolder.getName();
-
-  let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
-
-  // ---------- Infer testType from subfolders if not provided ----------
-  if (!testType) {
-    const subfolders = studentFolder.getFolders();
-    while (subfolders.hasNext()) {
-      const subfolder = subfolders.next();
-      const subfolderName = subfolder.getName();
-      if (subfolderName.includes(studentName)) {
-        if (subfolderName.includes('SAT')) testType = 'sat';
-        else if (subfolderName.includes('ACT')) testType = 'act';
-        break;
-      }
-    }
+  if (!studentData.testType) {
+    studentData.testType = getStudentTestType(studentData.folderId, studentData.name);
   }
 
-  // ---------- Scan files in student folder ----------
+  const ssIdObj = getSsIds(studentData.folderId, studentData.testType);
+  studentData.satAdminSsId = ssIdObj.satAdminSsId;
+  studentData.satStudentSsId = ssIdObj.satStudentSsId;
+  studentData.actAdminSsId = ssIdObj.actAdminSsId;
+  studentData.actStudentSsId = ssIdObj.actStudentSsId;
+  studentData.homeworkSsId = ssIdObj.homeworkSsId;
+
+  return studentData;
+}
+
+function getStudentTestType(studentFolderId, studentName) {
+  let testType = 'all';
+  const studentFolder = DriveApp.getFolderById(studentFolderId);
+  const subfolders = studentFolder.getFolders();
+  while (subfolders.hasNext()) {
+    const subfolder = subfolders.next();
+    const subfolderName = subfolder.getName();
+    if (subfolderName.includes(studentName)) {
+      if (subfolderName.includes('SAT')) testType = 'sat';
+      else if (subfolderName.includes('ACT')) testType = 'act';
+      break;
+    }
+  }
+  
+  return testType;
+}
+
+function getSsIds(studentFolderId, testType) {
+  const studentFolder = DriveApp.getFolderById(studentFolderId);
   const files = studentFolder.getFiles();
+  let satAdminSsId, satStudentSsId, actAdminSsId, actStudentSsId, homeworkSsId;
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName().toLowerCase();
@@ -111,21 +153,16 @@ function getStudentData(studentFolderId, testType = null) {
     if (!actStudentSsId) actStudentSsId = findFirstIdBySubstring(studentFolderId, 'act student answer', 'file');
   }
 
-  // ---------- Build studentData ----------
-  const studentData = {
-    name: studentName,
-    folderId: studentFolderId,
+  ssIds = {
     satAdminSsId: satAdminSsId,
     satStudentSsId: satStudentSsId,
     actAdminSsId: actAdminSsId,
     actStudentSsId: actStudentSsId,
-    homeworkSsId: homeworkSsId,
-    updateComplete: true
-  };
+    homeworkSsId: homeworkSsId
+  }
 
-  return studentData;
+  return ssIds;
 }
-
 
 function updateStudentsJSON(studentData, studentsJSON) {
   let existing = studentsJSON.find(obj => obj.folderId === studentData.folderId);
@@ -151,7 +188,6 @@ function updateStudentsJSON(studentData, studentsJSON) {
   return studentsJSON;
 }
 
-
 function getSatTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
@@ -163,7 +199,6 @@ function getSatTestCodes() {
 
   return testCodes;
 }
-
 
 function getActTestData(ssId, testCode) {
   const ss = SpreadsheetApp.openById(ssId);
@@ -191,8 +226,6 @@ function getActTestData(ssId, testCode) {
     };
   }
 }
-// }
-
 
 function getActTestCodes() {
   const dataSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actMasterDataSsId')).getSheetByName('ACT Answers');
@@ -207,7 +240,6 @@ function getActTestCodes() {
 
   return testCodes;
 }
-
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   const testCodes = getSatTestCodes();
@@ -279,7 +311,6 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
     }
   }
 }
-
 
 function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
   let adminSs;
@@ -360,7 +391,6 @@ function sortActTestSheets(ssId, testCodes, isAdminSheet=true) {
   }
 }
 
-
 function getActPageBreakRow(sheet) {
   const grandColData = sheet
     .getRange(1, 2, 111)
@@ -387,7 +417,6 @@ function getActPageBreakRow(sheet) {
     return 80;
   }
 }
-
 
 function getLastFilledRow(sheet, col) {
   const lastRow = sheet.getLastRow();
@@ -468,7 +497,6 @@ function getIdFromImportFormula(cell) {
     return ""; // avoid recursive errorNotification loop
   }
 }
-
 
 function sortFoldersByName(folderIterator) {
   if (!folderIterator.hasNext()) return [];
