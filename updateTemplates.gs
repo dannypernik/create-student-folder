@@ -20,9 +20,11 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
       for (subject of subjectData) {
         const sh = ss.getSheetByName(subject.name);
-        
+
         const mergeRanges = sh.getDataRange().getMergedRanges();
-        mergeRanges.forEach(range => range.breakApart());
+        mergeRanges
+          .filter(range => range.getRow() >= subject.rowOffset)
+          .forEach(range => range.breakApart());
 
         const conceptData = getConceptHeaderRows(ss, subject);
         for (concept of conceptData) {
@@ -253,10 +255,10 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
   const allStudentDataValue = allStudentDataCell.getValue();
   const allStudentData = allStudentDataValue ? JSON.parse(allStudentDataValue) : [];
   const allCompletedAdminFolderIds = allStudentData.map(s => s.adminFolderId);
-  
+
   const adminFolders = studentsFolder.getFolders();
-  const adminFolderList = sortFoldersByName(adminFolders); 
-  
+  const adminFolderList = sortFoldersByName(adminFolders);
+
   let startingFolderIndexCell = revBackendSheet.getRange(dataRow, 26);
   let startingFolderIndex = startingFolderIndexCell.getValue() || 0;
   studentsFolderIdCell.setValue(studentsFolderId);
@@ -320,7 +322,7 @@ function updateSatWorksheetLinks() {
   const studentDataImportCell = templateStudentSs.getSheetByName('Question bank data').getRange('A1');
   const studentDataSsId = getIdFromImportFormula(studentDataImportCell);
   const studentDataSs = SpreadsheetApp.openById(studentDataSsId);
-  
+
   if (!adminDataSs.getSheetByName('Links')) {
     const linksSheet = adminDataSs.insertSheet('Links');
     const linksDataImportValue = '=importrange("1XoANqHEGfOCdO1QBVnbA3GH-z7-_FMYwoy7Ft4ojulE","Links!I1:O50")';
@@ -349,7 +351,7 @@ function updateWorksheetLinks(adminSsId, studentSsId) {
       const revBackendSheet = ss.getSheetByName('Rev sheet backend');
 
       if (!revBackendSheet) continue;
-      
+
       linksImportRange = revBackendSheet.getRange('T19');
     } //
     else {
