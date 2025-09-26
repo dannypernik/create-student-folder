@@ -24,7 +24,7 @@ function getAllStudentData(
     if (studentName.includes('Ξ')) {
       continue;
     }
-
+    
     if ((!studentObj) || (checkAllKeys && !studentObj.updateComplete)) {
       if (!studentObj) {
         studentObj = { folderId: studentFolderId };
