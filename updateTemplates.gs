@@ -152,8 +152,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
           sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
         }
 
+        sh.getRange('A1:A').setFontColor('#ffffff');
+        sh.getRange('E1:E').setFontColor('#ffffff');
+        sh.getRange('I1:I').setFontColor('#ffffff');
+
         modifyConceptFormatRules(sh, isAdminSs);
-        mergeRanges.forEach(range => range.merge());
+        // mergeRanges.forEach(range => range.merge());
       }
 
       if (isAdminSs) {

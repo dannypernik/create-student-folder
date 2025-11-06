@@ -687,8 +687,15 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
 }
 
 
-function errorNotification(error, id) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function errorNotification(error, ssId) {
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(ssId);
+  }
+  catch {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+  
   const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
   // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
     .setWidth(500) //optional
@@ -698,7 +705,7 @@ function errorNotification(error, id) {
   const editorEmails = []
   ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
 
-  const url = getDriveUrl(id);
+  const url = getDriveUrl(ssId);
   const message = `
     <p>Error details: ${error.stack}</p>
     <p><a href="${url}" target="_blank">${url}</a></p>
@@ -727,6 +734,7 @@ function getDriveUrl(id) {
     }
     else {
       Logger.log('ID not recognized as file or folder');
+      return;
     }
   }
 }

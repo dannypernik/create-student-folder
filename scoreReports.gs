@@ -1,7 +1,13 @@
 function createSatScoreReport() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-  const testCode = ui.prompt('Test code').getResponseText().toUpperCase();
+  const prompt = ui.prompt('Test code', ui.ButtonSet.OK_CANCEL);
+
+  if(prompt.getSelectedButton() === ui.Button.CANCEL) {
+    return;
+  }
+
+  prompt.getResponseText().toUpperCase();
   const testCodes = getSatTestCodes();
 
   if (!testCodes.includes(testCode)) {
