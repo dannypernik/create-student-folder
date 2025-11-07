@@ -24,7 +24,8 @@ function updateConceptData(adminSsId, studentSsId = null) {
         const mergeRanges = sh.getDataRange().getMergedRanges();
         mergeRanges
           .filter(range => range.getRow() >= subject.rowOffset)
-          .forEach(range => range.breakApart());
+          .forEach(range => range.clear().breakApart());
+        SpreadsheetApp.flush();
 
         const conceptData = getConceptHeaderRows(ss, subject);
         for (concept of conceptData) {
@@ -152,12 +153,11 @@ function updateConceptData(adminSsId, studentSsId = null) {
           sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
         }
 
+        modifyConceptFormatRules(sh, isAdminSs);
+        
         sh.getRange('A1:A').setFontColor('#ffffff');
         sh.getRange('E1:E').setFontColor('#ffffff');
         sh.getRange('I1:I').setFontColor('#ffffff');
-
-        modifyConceptFormatRules(sh, isAdminSs);
-        // mergeRanges.forEach(range => range.merge());
       }
 
       if (isAdminSs) {
@@ -273,7 +273,11 @@ function updateAllSpreadsheets(updateFunction, dataRow) {
     const adminFolderId = adminFolder.getId();
     Logger.log(`Starting ${adminFolder.getName()}`);
     const adminFolderIndex = adminFolderList.findIndex(folder => folder.getId() === adminFolderId);
-    const studentData = getStudentData(adminFolderId, 'sat');
+    let studentData = {
+      folderId: adminFolderId,
+      testType: 'sat'
+    }
+    studentData = getStudentData(studentData);
 
     if (!allCompletedAdminFolderIds.includes(studentData.folderId)) {
       if (studentData.satAdminSsId) {
@@ -428,12 +432,14 @@ function getConceptHeaderRows(ss, subjectData) {
 function modifyRowsAtPositions(sheet, modifications) {
   // Sort modifications in descending order of positions to avoid shifting issues
   modifications.sort((a, b) => b.position - a.position);
+  const sheetFontColor = sheet.getRange('B15').getFontColor();
 
   // Apply each modification
   modifications.forEach(mod => {
     if (mod.rows > 0) {
       // Insert rows if `rows` is positive
       sheet.insertRows(mod.position, mod.rows);
+      sheet.getRange(mod.position, 1, mod.rows, sheet.getMaxColumns()).setFontColor(sheetFontColor);
     } //
     else if (mod.rows < 0) {
       // Delete rows if `rows` is negative
