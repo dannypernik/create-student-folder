@@ -31,7 +31,6 @@ function getAllStudentData(
       }
       studentObj = getStudentData(studentObj);
       Logger.log(`All data checked for ${studentName}`);
-      continue;
     } //
     
     if (!studentObj.testType) {
@@ -236,9 +235,22 @@ function getActTestCodes() {
     .map((row) => row[0]);
   const testCodes = testCodeCol.filter((x, i, a) => a.indexOf(x) == i).sort().reverse();
 
-  Logger.log(testCodes)
+  Logger.log(testCodes);
 
   return testCodes;
+}
+
+function addTestCodesToCellB1() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet()
+  const sheets = ss.getSheets();
+  const testCodes = getActTestCodes();
+  
+  for (sh of sheets) {
+    const sheetName = sh.getName();
+    if (testCodes.includes(sheetName)) {
+      sh.getRange('B1').setValue(sheetName);
+    }
+  }
 }
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
@@ -325,19 +337,25 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
   const studentSs = SpreadsheetApp.openById(studentSsId);
   const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actAdminTemplateSsId'));
   const adminTemplateSheet = adminTemplateSs.getSheetByName('202206');
+  const adminEnhancedTemplateSheet = adminTemplateSs.getSheetByName('2025MC1');
   const studentTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actStudentTemplateSsId'));
   const studentTemplateSheet = studentTemplateSs.getSheetByName('202206');
+  const studentEnhancedTemplateSheet = studentTemplateSs.getSheetByName('2025MC1');
 
   const spreadsheets = [
     {
       'ss': studentSs,
       'templateSheet': studentTemplateSheet,
-      'indexAdjustment': 1
+      'enhancedTemplateSheet': studentEnhancedTemplateSheet,
+      'indexAdjustment': 1,
+      'isAdmin': false
     },
     {
       'ss': adminSs,
       'templateSheet': adminTemplateSheet,
-      'indexAdjustment': adminIndexAdjustment     // 1-indexed + # of analysis sheets
+      'enhancedTemplateSheet': adminEnhancedTemplateSheet,
+      'indexAdjustment': adminIndexAdjustment,     // 1-indexed + # of analysis sheets,
+      'isAdmin': true
     }
   ]
 
@@ -348,8 +366,13 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
 
       if (!testSheet) {
         Logger.log(`Adding ${testCode} sheet to ${obj.ss.getName()}`);
-        const templateSheet = obj.templateSheet;
-        const newSheet = templateSheet.copyTo(obj.ss).setName(testCode);
+        
+        let sheetToCopy = obj.templateSheet;
+        if (testCode.includes('MC')) {
+          sheetToCopy = obj.enhancedTemplateSheet;
+        }
+
+        const newSheet = sheetToCopy.copyTo(obj.ss).setName(testCode);
         newSheet.getRange('B1').setValue(testCode);
 
         const testCodeIndex = testCodes.indexOf(testCode);
@@ -360,6 +383,9 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
           const prevTestPosition = obj.ss.getSheetByName(prevTest).getIndex() || 0;
           Logger.log(`Previous sheet: ${prevTest}, index ${prevTestPosition}`);
           obj.ss.moveActiveSheet(prevTestPosition + obj.indexAdjustment);
+        }
+        else if (obj.isAdmin) {
+          obj.ss.moveActiveSheet(3); // Two analysis sheets
         }
         else {
           obj.ss.moveActiveSheet(1);

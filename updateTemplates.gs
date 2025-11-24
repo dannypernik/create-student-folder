@@ -18,16 +18,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
       const ss = SpreadsheetApp.openById(id);
       const isAdminSs = (id === adminSsId);
 
+      Logger.log(`Starting ${isAdminSs ? 'admin ss' : 'student ss'}`)
+
       for (subject of subjectData) {
         const sh = ss.getSheetByName(subject.name);
-
-        const mergeRanges = sh.getDataRange().getMergedRanges();
-        mergeRanges
-          .filter(range => range.getRow() >= subject.rowOffset)
-          .forEach(range => range.clear().breakApart());
-        SpreadsheetApp.flush();
-
         const conceptData = getConceptHeaderRows(ss, subject);
+
         for (concept of conceptData) {
           for (let level = 1; level < 4; level ++) {
             let count = 0;
@@ -40,13 +36,17 @@ function updateConceptData(adminSsId, studentSsId = null) {
           }
         }
 
+        const mergeRanges = sh.getDataRange().getMergedRanges();
+        mergeRanges
+          .filter(range => range.getRow() >= subject.rowOffset)
+          .forEach(range => range.breakApart());
+
         Logger.log('Calculating row modifications for ' + subject.name);
         const modifications = [];
         for (concept of conceptData) {
           const rowsNeeded = Math.max(concept['level1'], concept['level2'], concept['level3']) + 4;
           const nextConcept = conceptData.find(c => c.id === concept['id'] + 1);
           let rowsToAdd, endRow;
-
           if (nextConcept) {
             endRow = nextConcept.row;
           }
@@ -74,8 +74,20 @@ function updateConceptData(adminSsId, studentSsId = null) {
         shNewRange.setNumberFormat('@STRING@');
         const shNewVals = shNewRange.getValues();
         const shFormulas = shNewRange.getFormulas();
-        const newConceptRows = shNewVals.map(row => row[1]);
+        const shTextStyles = shNewRange.getTextStyles();
+        const baseTextStyleRow = sh.getRange('B15:D15').getTextStyles()[0];
+        const levelStyle = sh.getRange(subject['rowOffset'] + 2, 2).getTextStyles()[0][0];
+        const newLevelStyle = SpreadsheetApp.newTextStyle()
+          .setFontFamily(levelStyle.getFontFamily())
+          .setFontSize(levelStyle.getFontSize())
+          .setBold(levelStyle.isBold())
+          .setItalic(levelStyle.isItalic())
+          .setForegroundColor(levelStyle.getForegroundColorObject())
+          .setUnderline(true) // ← add or remove underline
+          .build();
 
+        const newConceptRows = shNewVals.map(row => row[1]);
+        
         Logger.log(conceptData);
 
         for (let level = 1; level < 4; level++) {
@@ -97,8 +109,14 @@ function updateConceptData(adminSsId, studentSsId = null) {
               const dataRow = qbDataVals.find(row => row[3].toLowerCase() === concept['name'].toLowerCase() && Number(row[4]) === level && Number(row[5]) === qNum);
 
               shNewVals[qRow] = []
-              shNewVals[qRow][levelStartCol] = dataRow[0];
+              shNewVals[qRow][levelStartCol] = dataRow[0]; // id in col 1
               shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
+
+              for (let col = 0; col < 3; col++) {
+                shTextStyles[qRow][levelStartCol + 1 + col] = baseTextStyleRow[col];
+              }
+              // Apply underline to Level headers
+              shTextStyles[levelRow][levelStartCol + 1] = newLevelStyle;
             }
           }
 
@@ -110,13 +128,15 @@ function updateConceptData(adminSsId, studentSsId = null) {
             ]);
           }
 
+          // const slicedStyles = shTextStyles.map(row => row.slice(levelStartCol + 1, 4));
           sh.getRange(subject['rowOffset'], levelStartCol + 1, outputValues.length, 2).setValues(outputValues);
-          sh.getRange(subject['rowOffset'], levelStartCol + 2, outputValues.length).setHorizontalAlignment('center').setFontWeight('bold')
+          sh.getRange(subject['rowOffset'], levelStartCol + 2, outputValues.length).setHorizontalAlignment('center').setFontWeight('bold');
         }
 
-
+        shNewRange.setTextStyles(shTextStyles);
+        
         const answerFormulaR1C1 = '=let(worksheetNum,R[0]C[-1],if(worksheetNum="","", if(iserror(search(".",worksheetNum)),"", let(id,R[0]C[-2], xlookup(id,\'Student responses\'!R4C1:C1,\'Student responses\'!R4C8:C8,"not found")))))'
-        const correctedFormulaR1C1 = '=let(worksheetNum,R[0]C[-2],if(worksheetNum="","", if(left(worksheetNum,5)="Level","Corrected", if(iserror(search(".",worksheetNum)), "", let(id,R[0]C[-3], result,xlookup(id,\'Question bank data\'!R2C1:C1,\'Question bank data\'!R2C8:C8,"not found"), if(result=R[0]C[-1],"",result))))))'
+        const correctedFormulaR1C1 = '=let(worksheetNum,R[0]C[-2],if(worksheetNum="","", if(left(worksheetNum,5)="Level","Corrected", if(iserror(search(".",worksheetNum)), "", let(id,R[0]C[-3], result,xlookup(id,\'Question bank data\'!R2C1:C1,\'Question bank data\'!R2C8:C8,"not found"), if(result=R[0]C[-1],"",result))))))';
 
         if (isAdminSs) {
           for (let level = 1; level < 4; level++) {
@@ -149,10 +169,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
         for (concept of conceptData) {
           const headerStartRow = concept['index'] + subject['rowOffset'];
-          sh.getRange(headerStartRow, 2, 1, 11).merge().setHorizontalAlignment('left');
+          sh.getRange(headerStartRow, 2, 1, 11).merge().setValue(concept['name']).setHorizontalAlignment('left');
           sh.getRange(headerStartRow, 2, 3, 11).setFontWeight('bold');
+
         }
 
+        updateLevelHeaders(ss, isAdminSs);
         modifyConceptFormatRules(sh, isAdminSs);
         
         sh.getRange('A1:A').setFontColor('#ffffff');
@@ -377,32 +399,7 @@ function updateWorksheetLinks(adminSsId, studentSsId) {
 
     linksImportRange.setValue(linksImportValue);
 
-    for (subject of subjectData) {
-      const sh = ss.getSheetByName(subject.name);
-      const correctedColVal = isAdminSs ? "Corrected" : "";
-      const linkTableRange = isAdminSs ? "'Rev sheet backend'!R20C20:R70C26" : "'Question bank data'!R20C20:R70C23"
-      const templateRowVals = [
-        [
-          `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
-          "'Answer",
-          correctedColVal,
-          "",
-          `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
-          "'Answer",
-          correctedColVal,
-          "",
-          `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
-          "'Answer",
-          correctedColVal,
-        ]
-      ]
-
-      const conceptData = getConceptHeaderRows(ss, subject);
-
-      for (concept of conceptData) {
-        sh.getRange(concept.row + 2, 2, 1, 11).setValues(templateRowVals);
-      }
-    }
+    updateLevelHeaders(ss, isAdminSs);
   }
 }
 
@@ -432,14 +429,14 @@ function getConceptHeaderRows(ss, subjectData) {
 function modifyRowsAtPositions(sheet, modifications) {
   // Sort modifications in descending order of positions to avoid shifting issues
   modifications.sort((a, b) => b.position - a.position);
-  const sheetFontColor = sheet.getRange('B15').getFontColor();
+  // const sheetFontColor = sheet.getRange('B15').getFontColor();
 
   // Apply each modification
   modifications.forEach(mod => {
     if (mod.rows > 0) {
       // Insert rows if `rows` is positive
       sheet.insertRows(mod.position, mod.rows);
-      sheet.getRange(mod.position, 1, mod.rows, sheet.getMaxColumns()).setFontColor(sheetFontColor);
+      // sheet.getRange(mod.position, 1, mod.rows, sheet.getMaxColumns()).setFontColor(sheetFontColor);
     } //
     else if (mod.rows < 0) {
       // Delete rows if `rows` is negative
@@ -732,4 +729,35 @@ function modifyTestFormatRules(satAnswerSheetId='1FW_3GIWmytdrgBdfSuIl2exy9hIAnQ
     }
   }
   Logger.log('Test sheets formatting updated');
+}
+
+
+function updateLevelHeaders(ss, isAdminSs) {
+  for (subject of subjectData) {
+    const sh = ss.getSheetByName(subject.name);
+    const correctedColVal = isAdminSs ? "Corrected" : "";
+    const linkTableRange = isAdminSs ? "'Rev sheet backend'!R20C20:R70C26" : "'Question bank data'!R20C20:R70C23"
+
+    const templateRowVals = [
+      [
+        `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
+        "'Answer",
+        correctedColVal,
+        "",
+        `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
+        "'Answer",
+        correctedColVal,
+        "",
+        `=let(level,ifs(column()=2,1,column()=6,2,column()=10,3),hyperlink(vlookup(R[-2]C2,${linkTableRange},level+1,FALSE),"Level "&level))`,
+        "'Answer",
+        correctedColVal,
+      ]
+    ]
+
+    const conceptData = getConceptHeaderRows(ss, subject);
+
+    for (concept of conceptData) {
+      sh.getRange(concept.row + 2, 2, 1, 11).setValues(templateRowVals);
+    }
+  }
 }

@@ -7,7 +7,7 @@ function createSatScoreReport() {
     return;
   }
 
-  prompt.getResponseText().toUpperCase();
+  const testCode = prompt.getResponseText().toUpperCase();
   const testCodes = getSatTestCodes();
 
   if (!testCodes.includes(testCode)) {

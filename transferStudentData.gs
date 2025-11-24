@@ -25,7 +25,7 @@ function transferOldStudentData() {
 
 function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
   let htmlOutput = HtmlService
-      .createHtmlOutput('<p>If you manually cancel, you will need to restore the previous version of the new admin AND new student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
+      .createHtmlOutput('<p>You may close the spreadsheet or this popup. If you click "Cancel" above, you will need to restore the previous version of the new admin AND new student spreadsheets by clicking File > Version history > See version history</p><button onclick="google.script.host.close()">OK</button>')
       .setWidth(400)
       .setHeight(150);
     SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Do not cancel this script');
