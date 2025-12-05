@@ -20,8 +20,6 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
   studentData.folderId = newFolderId;
   studentData.name = studentName;
 
-  // const studentData = linkSheets(newFolderId, studentName, 'sat');
-
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
     .setHeight(50);
@@ -52,8 +50,6 @@ function NewActFolder(sourceFolderId, parentFolderId) {
   studentData.folderId = newFolderId;
   studentData.name = studentName;
 
-  // const studentData = linkSheets(newFolderId, studentName, 'act');
-
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
     .setHeight(50);
@@ -83,8 +79,6 @@ function NewTestPrepFolder(sourceFolderId, parentFolderId) {
   const studentData = copyFolder(sourceFolderId, newFolderId, studentName, 'all');
   studentData.folderId = newFolderId;
   studentData.name = studentName;
-
-  // const studentData = linkSheets(newFolderId, studentName, 'all');
 
   var htmlOutput = HtmlService.createHtmlOutput('<a href="https://drive.google.com/drive/u/0/folders/' + newFolderId + '" target="_blank" onclick="google.script.host.close()">' + studentName + "'s folder</a>")
     .setWidth(250)
@@ -316,129 +310,3 @@ function linkActFiles(actAdminSsId, actStudentSsId, studentName='') {
 
   return actSsIds;
 }
-
-function linkSheets(folderId, studentName='', prepType='all') {
-  const folder = DriveApp.getFolderById(folderId);
-  const files = folder.getFiles();
-  const subFolders = folder.getFolders();
-  const satFiles = [];
-  const actFiles = [];
-
-  while (files.hasNext()) {
-    const file = files.next();
-    const filename = file.getName();
-    const fileId = file.getId();
-
-    if (filename.includes('SAT') && prepType !== 'act') {
-      satFiles.push({ filename, fileId });
-    }
-    else if (filename.includes('ACT') && prepType !== 'sat') {
-      actFiles.push({ filename, fileId });
-    }
-  }
-
-  satFiles.forEach(({ filename, fileId }) => {
-    driveFile = DriveApp.getFileById(fileId);
-    driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-    if (filename.toLowerCase().includes('student answer sheet')) {
-      satSsIds.student = fileId;
-      driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    }
-    else if (filename.toLowerCase().includes('answer analysis')) {
-      satSsIds.admin = fileId;
-      const ss = SpreadsheetApp.openById(fileId);
-
-      ss.getSheets().forEach(s => {
-        const sName = s.getName();
-        const answerSheets = getSatTestCodes(ss);
-        answerSheets.push('Reading & Writing', 'Math', 'SLT Uniques');
-
-        if (answerSheets.includes(sName)) {
-          s.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
-        }
-      });
-
-      const revBackend = ss.getSheetByName('Rev sheet backend');
-      revBackend.getRange('K2').setValue(studentName);
-    }
-  });
-
-  actFiles.forEach(({ filename, fileId }) => {
-    driveFile = DriveApp.getFileById(fileId);
-    driveFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-    if (filename.toLowerCase().includes('student answer sheet')) {
-      actSsIds.student = fileId;
-      driveFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-    } //
-    else if (filename.toLowerCase().includes('answer analysis')) {
-      actSsIds.admin = fileId;
-      const ss = SpreadsheetApp.openById(fileId);
-      ss.getSheetByName('Student responses').getRange('G1').setValue(studentName);
-    }
-  });
-
-  while (subFolders.hasNext()) {
-    var subFolder = subFolders.next();
-    linkSheets(subFolder.getId(), studentName, prepType);
-    if (prepType === 'all' && satSsIds.student && satSsIds.admin && actSsIds.student && actSsIds.admin) {
-      break;
-    }
-    else if (prepType === 'sat' && satSsIds.student && satSsIds.admin) {
-      break;
-    }
-    else if (prepType === 'act' && actSsIds.student && actSsIds.admin) {
-      break;
-    }
-  }
-
-  if (satSsIds.student && satSsIds.admin) {
-    const satAdminSheet = SpreadsheetApp.openById(satSsIds.admin);
-    const satStudentSheet = SpreadsheetApp.openById(satSsIds.student);
-    satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSsIds.student);
-
-    const revDataId = satAdminSheet.getSheetByName('Rev sheet backend').getRange('U3').getValue();
-    const revDataSs = SpreadsheetApp.openById(revDataId);
-
-    let studentRevDataSheet = revDataSs.getSheetByName(studentName);
-    if (!studentRevDataSheet) {
-      try {
-        studentRevDataSheet = revDataSs.getSheetByName('Template').copyTo(revDataSs).setName(studentName);
-      } //
-      catch (err) {
-        const ui = SpreadsheetApp.getUi();
-        const continueScript = ui.alert('Rev data sheet with same student name already exists. All students must have unique names for rev sheets to work properly. Are you re-creating this folder for an existing student?', ui.ButtonSet.YES_NO);
-
-        if (continueScript === ui.Button.NO) {
-          const htmlOutput = HtmlService.createHtmlOutput('<p>Please use a unique name for the new student or delete/rename the "'+ studentName + '" sheet from your <a href="https://docs.google.com/spreadsheets/d/' + revDataId + '">Rev sheet data</a></p>')
-            .setWidth(400);
-          SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Duplicate student name');
-          return;
-        }
-      }
-    }
-
-    const studentQBSheet = satStudentSheet.getSheetByName('Question bank data');
-    studentQBSheet.getRange('U2').setValue(studentName);
-    studentQBSheet.getRange('U4').setValue(satSsIds.admin);
-
-
-    satAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(satSsIds.student);
-  }
-
-  if (actSsIds.student && actSsIds.admin) {
-    const actAdminSheet = SpreadsheetApp.openById(actSsIds.admin);
-    actAdminSheet.getSheetByName('Student responses').getRange('B1').setValue(actSsIds.student);
-  }
-
-  const studentData = {
-    name: studentName,
-    satAdminSsId: satSsIds.admin,
-    satStudentSsId: satSsIds.student,
-    actAdminSsId: actSsIds.admin,
-    actStudentSsId: actSsIds.student,
-  }
-
-  return studentData;
-}
-
-

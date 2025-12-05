@@ -645,7 +645,7 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
   const adminSs = SpreadsheetApp.openById(adminSsId);
   const adminFolder = DriveApp.getFileById(adminSsId).getParents().next();
   const adminSubfolders = adminFolder.getFolders();
-  let studentName, scoreReportFolder, scoreReportFolderId, studentFolder, revBackendSheet;
+  let studentName, scoreReportFolderId, studentFolder, revBackendSheet;
 
   if (ssType === 'sat') {
     revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
@@ -664,10 +664,6 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
   }
 
   if (scoreReportFolderId) {
-    scoreReportFolder = DriveApp.getFolderById(scoreReportFolderId);
-  }
-
-  if (scoreReportFolder) {
     return scoreReportFolderId;
   } //
   else {
@@ -690,10 +686,10 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
           scoreReportFolderId = studentSubfolder.getId();
           break;
         } //
-        else {
-          scoreReportFolderId = studentFolder.createFolder('Score reports').getId();
-          break;
-        }
+      }
+
+      if (!scoreReportFolderId) {
+        scoreReportFolderId = studentFolder.createFolder('Score reports').getId();
       }
     } //
     else {
@@ -708,7 +704,6 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
     dataSheet.getRange('V1:W1').setValues([['Score report folder ID:', scoreReportFolderId]]);
   }
 
-  Logger.log(scoreReportFolderId);
   return scoreReportFolderId;
 }
 
