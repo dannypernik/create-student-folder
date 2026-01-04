@@ -3,7 +3,8 @@ function getAllStudentData(
     index: null,
     name: null,
     studentsFolderId: null,
-    studentsData: null
+    studentsData: null,
+    studentsDataCell: null
   },
   checkAllKeys=false)
   {
@@ -52,9 +53,23 @@ function getAllStudentData(
         Logger.log(`${studentName} ssIds updated`);
       }
     }
+
+    if (studentObj.testType === 'sat') {
+      studentObj.actAdminSsId = null;
+      studentObj.actStudentSsId = null;
+    } //
+    else if (studentObj.testType === 'act') {
+      studentObj.satAdminSsId = null;
+      studentObj.satStudentSsId = null;
+    }
+    
     studentObj.name = studentName;
     studentObj.updateComplete = true
     client.studentsData = updateStudentsJSON(studentObj, client.studentsData);
+    
+    if (client.studentsDataCell) {
+      client.studentsDataCell.setValue(JSON.stringify(client.studentsData));
+    }
   }
 
   return client.studentsData;
@@ -240,17 +255,44 @@ function getActTestCodes() {
   return testCodes;
 }
 
-function addTestCodesToCellB1() {
+function updateActTestSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet()
   const sheets = ss.getSheets();
   const testCodes = getActTestCodes();
+  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actAdminTemplateSsId'));
+  const legacyTemplateSheet = templateSs.getSheetByName('202502');
+  const enhancedTemplateSheet = templateSs.getSheetByName('2025MC1');
+  const newLegacySheet = legacyTemplateSheet.copyTo(ss);
+  const newEnhancedSheet = enhancedTemplateSheet.copyTo(ss);
+
+  const templateLegacyHeader = newLegacySheet.getRange('A1:P4');
+  const templateLegacyAnswers = newLegacySheet.getRange('A5:P80');
+  const templateEnhancedHeader = newEnhancedSheet.getRange('A1:P4');
+  const templateEnhancedAnswers = newEnhancedSheet.getRange('A5:P55');
+  const headerBgColor = ss.getRange('A1').getBackground();
+  // const headerFontColor = ss.getRange('A1').getFontColorObject().asRgbColor().asHexString();
+
   
   for (sh of sheets) {
     const sheetName = sh.getName();
     if (testCodes.includes(sheetName)) {
+      if (sheetName.toLowerCase() > '202502') {
+        // Enhanced
+        templateEnhancedHeader.copyTo(sh.getRange('A1'), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+        templateEnhancedAnswers.copyTo(sh.getRange('A5'));
+      } // Legacy
+      else {
+        templateLegacyHeader.copyTo(sh.getRange('A1'), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+        const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3'])
+        enhancedCheckCells.setFontColor(headerBgColor);
+        templateLegacyAnswers.copyTo(sh.getRange('A5'));
+      }
       sh.getRange('B1').setValue(sheetName);
     }
   }
+
+  ss.deleteSheet(newLegacySheet);
+  ss.deleteSheet(newEnhancedSheet);
 }
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
