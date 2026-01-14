@@ -24,7 +24,7 @@ function transferOldStudentData() {
 }
 
 function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
-  let ui, newAdminSs;
+  let ui, newAdminSs, newAdminSsId;
   try {
     ui = SpreadsheetApp.getUi();
     let htmlOutput = HtmlService
@@ -33,10 +33,18 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
       .setHeight(150);
     ui.showModalDialog(htmlOutput, 'Do not cancel this script');
     newAdminSs = SpreadsheetApp.getActiveSpreadsheet();
+    newAdminSsId = newAdminSs.getId()
   }
   catch(e) {
     // function not run from spreadsheet
   }
+
+  if (!newAdminSsId) {
+    newAdminSsId = oldAdminSsId;
+    newAdminSs = SpreadsheetApp.openById(newAdminSsId);
+  }
+
+  const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
 
   // temporarily relax permissions
   DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
@@ -45,12 +53,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-    if (!newAdminSs) {
-      newAdminSs = oldAdminSs;
-    }
+    
 
-    const newAdminSsId = newAdminSs.getId()
-    const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
     const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
     newStudentData = newAdminSs.getSheetByName('Student responses');
@@ -200,7 +204,6 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
       let newStudentSheet = newStudentSs.getSheetByName(sheetName);
 
       if (newAdminSheet) {
-        Logger.log('Transferring answers for ' + sheetName);
         let newAnswersLevel1, newAnswersLevel2, newAnswersLevel3;
         let newStudentLevel1, newStudentLevel2, newStudentLevel3;
 
@@ -215,14 +218,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
           newAnswersLevel2 = newAdminSheet.getRange(5, 7, getLastFilledRow(newAdminSheet, 6) - 4);
           newStudentLevel1 = newStudentSheet.getRange(5, 3, getLastFilledRow(newAdminSheet, 2) - 4);
           newStudentLevel2 = newStudentSheet.getRange(5, 7, getLastFilledRow(newAdminSheet, 6) - 4);
-          if (sheetName === 'SLT Uniques') {
-            // newAdminSheet.getRange(5, 1, newAdminSheet.getMaxRows() - 5, 2).clearContent();
-            // newAdminSheet.getRange(5, 5, newAdminSheet.getMaxRows() - 5, 2).clearContent();
-            // newStudentSheet.getRange(5, 1, newStudentSheet.getMaxRows() - 5, 2).clearContent();
-            // newStudentSheet.getRange(5, 5, newStudentSheet.getMaxRows() - 5, 2).clearContent();
-            Logger.log('SLT Uniques logic needed');
-          }
-          else {
+
+          if (sheetName !== 'SLT Uniques') {
             newAnswersLevel3 = newAdminSheet.getRange(5, 11, getLastFilledRow(newAdminSheet, 10) - 4);
             newStudentLevel3 = newStudentSheet.getRange(5, 11, getLastFilledRow(newAdminSheet, 10) - 4);
           }
@@ -263,9 +260,6 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
               throw Error(`Mismatch in row count for ${sheetName} at level ${i + 1}`);
             }
           }
-          else {
-            Logger.log('newAdminRanges[i]=' + newAdminRanges[i] + ', newAdminRanges[i]=' + newStudentRanges[i])
-          }
         }
         let testScore = testScores.find(score => score.test === sheetName);
         if (testScore) {
@@ -289,13 +283,10 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
   }
 
-  try {
+  if (ui) {
     htmlOutput = HtmlService.createHtmlOutput('<a href="https://docs.google.com/spreadsheets/d/' + newStudentSsId + '" target="_blank" onclick="google.script.host.close()">Student answer sheet</a>')
       .setWidth(250)
       .setHeight(50);
     ui.showModalDialog(htmlOutput, 'Data transfer complete');
-  }
-  catch (e) {
-    Logger.log('Data transfer complete. Student answer sheet URL: https://docs.google.com/spreadsheets/d/' + newStudentSsId);
   }
 }

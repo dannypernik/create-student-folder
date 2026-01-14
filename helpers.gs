@@ -49,7 +49,7 @@ function getAllStudentData(
       if (studentObj.homeworkSsId) {
         Logger.log(`${studentName} ssIds updated with homeworkSsId = ${studentObj.homeworkSsId}`);
       } //
-      else {
+      else if ((studentObj.satAdminSsId && studentObj.testType !== 'act') || (studentObj.actAdminSsId && studentObj.testType !== 'sat')) {
         Logger.log(`${studentName} ssIds updated`);
       }
     }
@@ -196,7 +196,7 @@ function updateStudentsJSON(studentData, studentsJSON) {
   } //
   else {
     studentsJSON.push(studentData);
-    Logger.log(`${studentData.name} added`);
+    Logger.log(`Added ${studentData.name}`);
   }
 
   return studentsJSON;
@@ -241,58 +241,351 @@ function getActTestData(ssId, testCode) {
   }
 }
 
-function getActTestCodes() {
-  const dataSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actMasterDataSsId')).getSheetByName('ACT Answers');
-  const lastFilledRow = getLastFilledRow(dataSheet, 1);
-  const testCodeCol = dataSheet
-    .getRange(2, 1, lastFilledRow - 1)
-    .getValues()
-    .map((row) => row[0]);
-  const testCodes = testCodeCol.filter((x, i, a) => a.indexOf(x) == i).sort().reverse();
+function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actMasterDataSsId')).getSheetByName('ACT Answers')) {
+  // Only column A, from row 2 down to last row
+  const lastRow = dataSheet.getLastRow();
+  if (lastRow < 2) return [];
 
+  const colA = dataSheet.getRange(2, 1, lastRow - 1, 1).getValues(); // [[A1],[A2],...]
+  const set = new Set();
+
+  for (let i = 0; i < colA.length; i++) {
+    const v = colA[i][0];
+    if (v !== '' && v != null) set.add(String(v));
+  }
+
+  const testCodes = Array.from(set).sort().reverse();
   Logger.log(testCodes);
-
   return testCodes;
 }
 
-function updateActTestSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet()
-  const sheets = ss.getSheets();
-  const testCodes = getActTestCodes();
-  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actAdminTemplateSsId'));
-  const legacyTemplateSheet = templateSs.getSheetByName('202502');
-  const enhancedTemplateSheet = templateSs.getSheetByName('2025MC1');
-  const newLegacySheet = legacyTemplateSheet.copyTo(ss);
-  const newEnhancedSheet = enhancedTemplateSheet.copyTo(ss);
 
-  const templateLegacyHeader = newLegacySheet.getRange('A1:P4');
-  const templateLegacyAnswers = newLegacySheet.getRange('A5:P80');
-  const templateEnhancedHeader = newEnhancedSheet.getRange('A1:P4');
-  const templateEnhancedAnswers = newEnhancedSheet.getRange('A5:P55');
-  const headerBgColor = ss.getRange('A1').getBackground();
-  // const headerFontColor = ss.getRange('A1').getFontColorObject().asRgbColor().asHexString();
+// function updateActTestSheets() {
+//   const startTime = new Date().getTime(); // Record the start time
+//   const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
+//   const ss = SpreadsheetApp.getActiveSpreadsheet();
+//   const ui = SpreadsheetApp.getUi();
+//   const button = ui.alert('Use official scoring?', ui.ButtonSet.YES_NO_CANCEL);
+//   let templateSs;
 
+//   if (button === ui.Button.YES) {
+//     templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+//     ui.alert('Template SS has not been set up to enable official scoring.');
+//     return;
+//   } //
+//   else if (button === ui.Button.NO) {
+//     templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+//   } //
+//   else {
+//     return;
+//   }
   
-  for (sh of sheets) {
-    const sheetName = sh.getName();
-    if (testCodes.includes(sheetName)) {
-      if (sheetName.toLowerCase() > '202502') {
-        // Enhanced
-        templateEnhancedHeader.copyTo(sh.getRange('A1'), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
-        templateEnhancedAnswers.copyTo(sh.getRange('A5'));
-      } // Legacy
-      else {
-        templateLegacyHeader.copyTo(sh.getRange('A1'), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
-        const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3'])
-        enhancedCheckCells.setFontColor(headerBgColor);
-        templateLegacyAnswers.copyTo(sh.getRange('A5'));
-      }
-      sh.getRange('B1').setValue(sheetName);
-    }
+//   const sheets = ss.getSheets();
+//   Logger.log(`Starting test codes`);
+//   const testCodes = getActTestCodes();
+//   Logger.log(`Retreived test codes`);
+  
+//   const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
+//   const enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
+//   const newLegacySheet = legacyTemplateSheet.copyTo(ss);
+//   const newEnhancedSheet = enhancedTemplateSheet.copyTo(ss);
+
+//   Logger.log('Copied test sheets');
+
+//   const templateLegacyHeader = newLegacySheet.getRange('A1:P4');
+//   const templateLegacyAnswers = newLegacySheet.getRange('A5:P80');
+//   const templateEnhancedHeader = newEnhancedSheet.getRange('A1:P4');
+//   const templateEnhancedAnswers = newEnhancedSheet.getRange('A5:P55');
+//   const styleSheet = ss.getSheetByName('201904');
+//   const headerBgColor = styleSheet.getRange('A1').getBackground();
+//   // const headerFontColor = styleSheet.getFontColorObject().asRgbColor().asHexString();
+
+//   Logger.log(`Got ranges and colors`);
+
+//   // if (headerFontColor.toLowerCase() !== '#ffffff') {
+//   //   alert('Implement header font color');
+//   //   errorNotification('Implement header font color', ss.getId());
+//   // }
+
+//   try {
+//     for (let sh of sheets) {
+//       const currentTime = new Date().getTime();
+//       if (currentTime - startTime > maxDuration) {
+//         Logger.log("Exiting loop after 5 minutes and 30 seconds.");
+//         throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Cleaning up.");
+//       }
+
+//       const sheetName = sh.getName();
+//       if (testCodes.includes(sheetName)) {
+//         Logger.log('Get ranges');
+//         const mergeRanges = sh.getRange('A1:N1').getMergedRanges();
+//         const headerRange = sh.getRange('A1');
+//         const bodyRange = sh.getRange('A5');
+//         const compositeCell = sh.getRange('E1');
+//         const infoCell = sh.getRange('G1');
+//         const testCodeCell = sh.getRange('B1');
+//         const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3'])
+        
+//         Logger.log('Start changes');
+//         mergeRanges.forEach(range => range.breakApart());
+//         if (sheetName > '202502') {
+//           // Enhanced
+//           templateEnhancedHeader.copyTo(headerRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+//           templateEnhancedAnswers.copyTo(bodyRange);
+//           compositeCell.setHorizontalAlignment('right');
+//           infoCell.setHorizontalAlignment('left');
+//         } // Legacy
+//         else {
+//           templateLegacyHeader.copyTo(headerRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+//           enhancedCheckCells.setFontColor(headerBgColor);
+//           templateLegacyAnswers.copyTo(bodyRange);
+//           compositeCell.setHorizontalAlignment('right');
+//           infoCell.setHorizontalAlignment('left');
+//         }
+//         // sh.getRange('A1:P4').setBackground(headerBgColor).setFontColor(headerFontColor).setBorder(true,true,true,true,true,true,headerBgColor,SpreadsheetApp.BorderStyle.SOLID);
+//         testCodeCell.setValue(sheetName);
+        
+//         // setScoreColor(sh);
+
+//         Logger.log(`Updated ${sheetName}`);
+//       }
+//     }
+//   }
+//   catch (err) {
+//     Logger.log(err)
+//   }
+//   finally {
+//     ss.deleteSheet(newLegacySheet);
+//     ss.deleteSheet(newEnhancedSheet);
+//     Logger.log('Removed template sheets');
+//   }
+// }
+
+function updateActTestSheets() {
+  const startTime = Date.now();
+  const maxDuration = 5.5 * 60 * 1000; // 5m30s
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+
+  const button = ui.alert('Use official scoring?', ui.ButtonSet.YES_NO_CANCEL);
+  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+
+  let enhancedTemplateSheet;
+
+  if (button === ui.Button.YES) {
+    ui.alert('Template SS has not been set up to enable official scoring.');
+    enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced official');
+    return;
+  } else if (button === ui.Button.NO) {
+    enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
+  } else {
+    return;
   }
 
-  ss.deleteSheet(newLegacySheet);
-  ss.deleteSheet(newEnhancedSheet);
+  // Template sheets (no need to copy them into ss anymore)
+  const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
+
+  if (!legacyTemplateSheet || !enhancedTemplateSheet) {
+    throw new Error('Missing template sheet(s): Admin legacy / Admin enhanced adjusted');
+  }
+
+  // Header ranges in the template sheets
+  const LEGACY_HEADER_A1_P4 = legacyTemplateSheet.getRange('A1:P4');
+  const ENH_HEADER_A1_P4 = enhancedTemplateSheet.getRange('A1:P4');
+
+  // Capture BOTH formulas and values for headers
+  // (We write formulas first, then values to preserve constants/labels in the template)
+  const legacyHeaderFormulas = LEGACY_HEADER_A1_P4.getFormulasR1C1();
+  const legacyHeaderValues = LEGACY_HEADER_A1_P4.getValues();
+
+  const enhHeaderFormulas = ENH_HEADER_A1_P4.getFormulasR1C1();
+  const enhHeaderValues = ENH_HEADER_A1_P4.getValues();
+
+  const dataSheet = ss.getSheetByName('Data');
+  const testFilterCell = dataSheet.getRange('M2');
+  testFilterCell.setFormula('=unique(A2:A)');
+  // Style reference
+  const styleSheet = ss.getSheetByName('201904');
+  if (!styleSheet) throw new Error('Missing style sheet: 201904');
+  const headerBgColor = styleSheet.getRange('A1').getBackground();
+
+  const testCodes = getActTestCodes();
+
+  try {
+    // Iterate only the test sheets by name, instead of scanning ss.getSheets()
+    for (const sheetName of testCodes) {
+      if (Date.now() - startTime > maxDuration) {
+        Logger.log('Exiting loop after 5 minutes and 30 seconds.');
+        throw new Error('Process exceeded maximum duration of 5 minutes and 30 seconds.');
+      }
+
+      const testDataRow = testCodes.indexOf(sheetName) + 2;
+      Logger.log(testDataRow)
+      const testDataCell = dataSheet.getRange(testDataRow, 14);
+      if (testDataCell.getValue() === 'done') {
+        Logger.log(`Skipping ${sheetName}`);
+        continue;
+      }
+
+      const sh = ss.getSheetByName(sheetName);
+      if (!sh) {
+        Logger.log(`Sheet not found, skipping: ${sheetName}`);
+        continue;
+      }
+
+      // Unmerge header row (only if there are merges)
+      const mergeRanges = sh.getRange('A1:N1').getMergedRanges();
+      if (mergeRanges.length) {
+        mergeRanges.forEach(r => r.breakApart());
+      }
+
+      // Common header cells
+      const headerRange = sh.getRange('A1'); // top-left anchor
+      const compositeCell = sh.getRange('E1');
+      const infoCell = sh.getRange('G1');
+      const testCodeCell = sh.getRange('B1');
+
+      const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3']);
+
+      if (sheetName > '202502') {
+        // Enhanced: write header (formulas + values)
+        // Break merges across header once (prevents Service error)
+        // sh.getRange('A1:P4').breakApart();
+
+        // Row 1
+        sh.getRange('A1:P1')
+          .setFormulasR1C1(enhHeaderFormulas.slice(0, 1))
+          .setValues(enhHeaderValues.slice(0, 1));
+
+        // Rows 3–4 (skip row 2)
+        sh.getRange('A3:P4')
+          .setFormulasR1C1(enhHeaderFormulas.slice(2, 4))
+          .setValues(enhHeaderValues.slice(2, 4));
+        compositeCell.setHorizontalAlignment('right');
+        infoCell.setHorizontalAlignment('left');
+      } //
+      else {
+        // Legacy: write header (formulas + values)
+        // Break merges across header once (prevents Service error)
+        // sh.getRange('A1:P4').breakApart();
+
+        // Row 1
+        sh.getRange('A1:P1')
+          .setFormulasR1C1(legacyHeaderFormulas.slice(0, 1))
+          .setValues(legacyHeaderValues.slice(0, 1));
+
+        // Rows 3–4 (skip row 2)
+        sh.getRange('A3:P4')
+          .setFormulasR1C1(legacyHeaderFormulas.slice(2, 4))
+          .setValues(legacyHeaderValues.slice(2, 4));
+        compositeCell.setHorizontalAlignment('right');
+        infoCell.setHorizontalAlignment('left');
+        enhancedCheckCells.setFontColor(headerBgColor);
+        setScoreColor(sh);
+
+        // Conditional formatting: add ONLY 1st 3 rules (body scope is A5:P80)
+        // replaceLegacyRules(legacyTemplateSheet, sh);
+      }
+
+      testCodeCell.setValue(sheetName);
+      testDataCell.setValue('done');
+
+      Logger.log(`Updated ${sheetName}`);
+    }
+  } catch (err) {
+    Logger.log(err && err.stack ? err.stack : String(err));
+    ui.alert('Update is not finished. Please run update again.');
+    return;
+  } finally {
+    Logger.log('Done');
+  }
+
+  dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
+}
+
+function addScaleDownFormatting() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const testCodes = getActTestCodes();
+  const dataSheet = ss.getSheetByName('Data');
+  const testFilterCell = dataSheet.getRange('M2');
+  testFilterCell.setFormula('=unique(A2:A)');
+  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
+
+  try {
+    // Iterate only the test sheets by name, instead of scanning ss.getSheets()
+    for (const sheetName of testCodes) {
+      if (Date.now() - startTime > maxDuration) {
+        Logger.log('Exiting loop after 5 minutes and 30 seconds.');
+        throw new Error('Process exceeded maximum duration of 5 minutes and 30 seconds.');
+      }
+
+      const testDataRow = testCodes.indexOf(sheetName) + 2;
+      Logger.log(testDataRow)
+      const testDataCell = dataSheet.getRange(testDataRow, 14);
+      if (testDataCell.getValue() === 'done') {
+        Logger.log(`${sheetName} done, skipping`);
+        continue;
+      }
+
+      const sh = ss.getSheetByName(sheetName);
+      if (!sh) {
+        Logger.log(`${sheetName} sheet not found, skipping`);
+        continue;
+      }
+
+      replaceLegacyRules(legacyTemplateSheet, sh);
+    }
+  }
+  catch (err) {}
+
+}
+
+function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
+  const templateRules = legacyTemplateSheet.getConditionalFormatRules();
+  // const rules = [templateRules[0], templateRules[1], templateRules[2]].filter(Boolean);
+
+  // if (rules.length !== 3) {
+  //   throw new Error(`Legacy template missing rule 0-2. Found ${templateRules.length} rule(s).`);
+  // }
+
+  const bodyRange = targetSheet.getRange('A5:P80');
+
+  const rebuilt = templateRules.map((r) => {
+    const bool = r.getBooleanCondition && r.getBooleanCondition();
+    if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
+      throw new Error('Legacy rules 0-2 must be CUSTOM_FORMULA rules.');
+    }
+    const formula = bool.getCriteriaValues()[0];
+
+    const b = SpreadsheetApp.newConditionalFormatRule()
+      .setRanges([bodyRange])
+      .whenFormulaSatisfied(formula);
+
+    const bg = r.getBackground && r.getBackground();
+    if (bg) b.setBackground(bg);
+
+    const fontColor = r.getFontColor && r.getFontColor();
+    if (fontColor) b.setFontColor(fontColor);
+
+    const bold = r.isBold && r.isBold();
+    if (bold !== null && bold !== undefined) b.setBold(!!bold);
+
+    const italic = r.isItalic && r.isItalic();
+    if (italic !== null && italic !== undefined) b.setItalic(!!italic);
+
+    const underline = r.isUnderline && r.isUnderline();
+    if (underline !== null && underline !== undefined) b.setUnderline(!!underline);
+
+    const strikethrough = r.isStrikethrough && r.isStrikethrough();
+    if (strikethrough !== null && strikethrough !== undefined) b.setStrikethrough(!!strikethrough);
+
+    return b.build();
+  });
+
+  // Replace ALL conditional formatting rules on the target sheet
+  targetSheet.setConditionalFormatRules(rebuilt);
 }
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
@@ -366,7 +659,8 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
   }
 }
 
-function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
+function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
+  // adminIndexAdjustment = number of analysis sheets preceding test sheets
   let adminSs;
   if (!adminSsId) {
     adminSs = SpreadsheetApp.getActiveSpreadsheet();
@@ -377,12 +671,19 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
 
   const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const studentSs = SpreadsheetApp.openById(studentSsId);
-  const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actAdminTemplateSsId'));
-  const adminTemplateSheet = adminTemplateSs.getSheetByName('202206');
-  const adminEnhancedTemplateSheet = adminTemplateSs.getSheetByName('2025MC1');
-  const studentTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actStudentTemplateSsId'));
-  const studentTemplateSheet = studentTemplateSs.getSheetByName('202206');
-  const studentEnhancedTemplateSheet = studentTemplateSs.getSheetByName('2025MC1');
+  const actTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const adminTemplateSheet = actTemplateSs.getSheetByName('Admin legacy');
+  const adminEnhancedTemplateSheet = actTemplateSs.getSheetByName('Admin enhanced adjusted');
+  const studentTemplateSheet = actTemplateSs.getSheetByName('Student legacy');
+  const studentEnhancedTemplateSheet = actTemplateSs.getSheetByName('Student enhanced');
+
+  const templateSheet = adminSs.getSheetByName('201904');
+  const templateHeaderCell = templateSheet.getRange('A1');
+  const templateBodyCell = templateSheet.getRange('A5');
+  const headerBgColor = templateHeaderCell.getBackground();
+  const headerFontColor = templateHeaderCell.getFontColorObject().asRgbColor().asHexString();
+  const bodyFontColor = templateBodyCell.getFontColorObject().asRgbColor().asHexString();
+  
 
   const spreadsheets = [
     {
@@ -417,17 +718,25 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
         const newSheet = sheetToCopy.copyTo(obj.ss).setName(testCode);
         newSheet.getRange('B1').setValue(testCode);
 
+        const headerRange = newSheet.getRange('A1:P4');
+        headerRange.setBackground(headerBgColor).setFontColor(headerFontColor).setBorder(true, true, true, true, true, true, headerBgColor, SpreadsheetApp.BorderStyle.SOLID);
+        newSheet.getRange('A5:P80').setFontColor(bodyFontColor);
+
+        if (obj.isAdmin) {
+          setScoreColor(testSheet);
+        }
+        
         const testCodeIndex = testCodes.indexOf(testCode);
 
         obj.ss.setActiveSheet(newSheet);
         if (testCodeIndex > 0) {
           const prevTest = testCodes[testCodeIndex - 1];
-          const prevTestPosition = obj.ss.getSheetByName(prevTest).getIndex() || 0;
+          const prevTestPosition = obj.ss.getSheetByName(prevTest).getIndex() + 1 || 1;
           Logger.log(`Previous sheet: ${prevTest}, index ${prevTestPosition}`);
-          obj.ss.moveActiveSheet(prevTestPosition + obj.indexAdjustment);
+          obj.ss.moveActiveSheet(prevTestPosition);
         }
         else if (obj.isAdmin) {
-          obj.ss.moveActiveSheet(3); // Two analysis sheets
+          obj.ss.moveActiveSheet(obj.indexAdjustment + 1); // Move after analysis sheets
         }
         else {
           obj.ss.moveActiveSheet(1);
@@ -435,6 +744,12 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=1) {
       }
     }
   }
+}
+
+function setScoreColor(sheet) {
+  const scoreColor = '#93c47d'
+  sheet.getRange('F1').setBackground(scoreColor);
+  sheet.getRangeList(['B3', 'F3', 'J3', 'N3']).setBorder(true, true, true, true, true, true, scoreColor, SpreadsheetApp.BorderStyle.SOLID_MEDIUM)
 }
 
 function sortActTestSheets(ssId, testCodes, isAdminSheet=true) {
@@ -759,11 +1074,14 @@ function errorNotification(error, ssId) {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
   
-  const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
-  // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
-    .setWidth(500) //optional
-    .setHeight(300); //optional
-  SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
+  try {
+    const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
+    // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
+      .setWidth(500) //optional
+      .setHeight(300); //optional
+    SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Error`);
+  }
+  catch {}
 
   const editorEmails = []
   ss.getEditors().forEach(editor => editorEmails.push(editor.getEmail()));
