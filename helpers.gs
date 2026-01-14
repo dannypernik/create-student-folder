@@ -25,7 +25,7 @@ function getAllStudentData(
     if (studentName.includes('Ξ')) {
       continue;
     }
-    
+
     if ((!studentObj) || (checkAllKeys && !studentObj.updateComplete)) {
       if (!studentObj) {
         studentObj = { folderId: studentFolderId };
@@ -33,7 +33,7 @@ function getAllStudentData(
       studentObj = getStudentData(studentObj);
       Logger.log(`All data checked for ${studentName}`);
     } //
-    
+
     if (!studentObj.testType) {
       studentObj.testType = getStudentTestType(studentObj.folderId, studentName);
       Logger.log(`${studentName} testType = ${studentObj.testType}`);
@@ -62,11 +62,11 @@ function getAllStudentData(
       studentObj.satAdminSsId = null;
       studentObj.satStudentSsId = null;
     }
-    
+
     studentObj.name = studentName;
     studentObj.updateComplete = true
     client.studentsData = updateStudentsJSON(studentObj, client.studentsData);
-    
+
     if (client.studentsDataCell) {
       client.studentsDataCell.setValue(JSON.stringify(client.studentsData));
     }
@@ -106,7 +106,7 @@ function getStudentTestType(studentFolderId, studentName) {
       break;
     }
   }
-  
+
   return testType;
 }
 
@@ -279,12 +279,12 @@ function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.g
 //   else {
 //     return;
 //   }
-  
+
 //   const sheets = ss.getSheets();
 //   Logger.log(`Starting test codes`);
 //   const testCodes = getActTestCodes();
 //   Logger.log(`Retreived test codes`);
-  
+
 //   const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
 //   const enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
 //   const newLegacySheet = legacyTemplateSheet.copyTo(ss);
@@ -325,7 +325,7 @@ function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.g
 //         const infoCell = sh.getRange('G1');
 //         const testCodeCell = sh.getRange('B1');
 //         const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3'])
-        
+
 //         Logger.log('Start changes');
 //         mergeRanges.forEach(range => range.breakApart());
 //         if (sheetName > '202502') {
@@ -344,7 +344,7 @@ function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.g
 //         }
 //         // sh.getRange('A1:P4').setBackground(headerBgColor).setFontColor(headerFontColor).setBorder(true,true,true,true,true,true,headerBgColor,SpreadsheetApp.BorderStyle.SOLID);
 //         testCodeCell.setValue(sheetName);
-        
+
 //         // setScoreColor(sh);
 
 //         Logger.log(`Updated ${sheetName}`);
@@ -555,12 +555,12 @@ function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
   const rebuilt = templateRules.map((r) => {
     const bool = r.getBooleanCondition && r.getBooleanCondition();
     if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
-      throw new Error('Legacy rules 0-2 must be CUSTOM_FORMULA rules.');
+      throw new Error('Legacy rules be CUSTOM_FORMULA rules.');
     }
     const formula = bool.getCriteriaValues()[0];
 
     const b = SpreadsheetApp.newConditionalFormatRule()
-      .setRanges([bodyRange])
+      .setRanges(r.getRanges())
       .whenFormulaSatisfied(formula);
 
     const bg = r.getBackground && r.getBackground();
@@ -683,7 +683,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
   const headerBgColor = templateHeaderCell.getBackground();
   const headerFontColor = templateHeaderCell.getFontColorObject().asRgbColor().asHexString();
   const bodyFontColor = templateBodyCell.getFontColorObject().asRgbColor().asHexString();
-  
+
 
   const spreadsheets = [
     {
@@ -709,7 +709,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
 
       if (!testSheet) {
         Logger.log(`Adding ${testCode} sheet to ${obj.ss.getName()}`);
-        
+
         let sheetToCopy = obj.templateSheet;
         if (testCode.includes('MC')) {
           sheetToCopy = obj.enhancedTemplateSheet;
@@ -725,7 +725,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
         if (obj.isAdmin) {
           setScoreColor(testSheet);
         }
-        
+
         const testCodeIndex = testCodes.indexOf(testCode);
 
         obj.ss.setActiveSheet(newSheet);
@@ -1073,7 +1073,7 @@ function errorNotification(error, ssId) {
   catch {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
-  
+
   try {
     const htmlOutput = HtmlService.createHtmlOutput(`<p>We have been notified of the following error: ${error.message}</p><p>${error.stack}`)
     // const htmlOutput = HtmlService.createHtmlOutput(`<p>Please copy-paste the following details and send to ${ADMIN_EMAIL}. Sorry about that!</p><p> ${error.message}</p><p>${error.stack}`)
