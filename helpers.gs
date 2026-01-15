@@ -481,12 +481,12 @@ function updateActTestSheets() {
         compositeCell.setHorizontalAlignment('right');
         infoCell.setHorizontalAlignment('left');
         enhancedCheckCells.setFontColor(headerBgColor);
-        setScoreColor(sh);
 
         // Conditional formatting: add ONLY 1st 3 rules (body scope is A5:P80)
         // replaceLegacyRules(legacyTemplateSheet, sh);
       }
 
+      setScoreColor(sh);
       testCodeCell.setValue(sheetName);
       testDataCell.setValue('done');
 
@@ -496,14 +496,14 @@ function updateActTestSheets() {
     Logger.log(err && err.stack ? err.stack : String(err));
     ui.alert('Update is not finished. Please run update again.');
     return;
-  } finally {
-    Logger.log('Done');
   }
 
   dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
 }
 
 function addScaleDownFormatting() {
+  const startTime = Date.now();
+  const maxDuration = 5.5 * 60 * 1000; // 5m30s
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const testCodes = getActTestCodes();
@@ -521,8 +521,9 @@ function addScaleDownFormatting() {
         throw new Error('Process exceeded maximum duration of 5 minutes and 30 seconds.');
       }
 
+      Logger.log(`Starting ${sheetName}`)
+
       const testDataRow = testCodes.indexOf(sheetName) + 2;
-      Logger.log(testDataRow)
       const testDataCell = dataSheet.getRange(testDataRow, 14);
       if (testDataCell.getValue() === 'done') {
         Logger.log(`${sheetName} done, skipping`);
@@ -536,10 +537,18 @@ function addScaleDownFormatting() {
       }
 
       replaceLegacyRules(legacyTemplateSheet, sh);
+      testDataCell.setValue('done');
     }
   }
-  catch (err) {}
+  catch (err) {
+    Logger.log(err && err.stack ? err.stack : String(err));
+    ui.alert('Update is not finished. Please run update again.');
+    return;
+  }
 
+  
+
+  dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
 }
 
 function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
@@ -550,18 +559,21 @@ function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
   //   throw new Error(`Legacy template missing rule 0-2. Found ${templateRules.length} rule(s).`);
   // }
 
-  // Remove all conditional formatting rules from the sheet
-  targetSheet.setConditionalFormatRules([]);
+  // const bodyRange = targetSheet.getRange('A5:P80');
 
   const rebuilt = templateRules.map((r) => {
     const bool = r.getBooleanCondition && r.getBooleanCondition();
     if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
       throw new Error('Legacy rules be CUSTOM_FORMULA rules.');
     }
+
+    // 1) Rebuild ranges so they belong to targetSheet
+    const targetRanges = r.getRanges().map(tr => targetSheet.getRange(tr.getA1Notation()));
+
     const formula = bool.getCriteriaValues()[0];
 
     const b = SpreadsheetApp.newConditionalFormatRule()
-      .setRanges(r.getRanges())
+      .setRanges(targetRanges)
       .whenFormulaSatisfied(formula);
 
     const bg = r.getBackground && r.getBackground();
