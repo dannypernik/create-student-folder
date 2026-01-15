@@ -550,7 +550,8 @@ function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
   //   throw new Error(`Legacy template missing rule 0-2. Found ${templateRules.length} rule(s).`);
   // }
 
-  const bodyRange = targetSheet.getRange('A5:P80');
+  // Remove all conditional formatting rules from the sheet
+  targetSheet.setConditionalFormatRules([]);
 
   const rebuilt = templateRules.map((r) => {
     const bool = r.getBooleanCondition && r.getBooleanCondition();
