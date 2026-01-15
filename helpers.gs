@@ -521,7 +521,10 @@ function addScaleDownFormatting() {
         throw new Error('Process exceeded maximum duration of 5 minutes and 30 seconds.');
       }
 
-      Logger.log(`Starting ${sheetName}`)
+      if (sheetName > '202502') {
+        Logger.log(`Skipping enhanced ${sheetName}`);
+        continue;
+      }
 
       const testDataRow = testCodes.indexOf(sheetName) + 2;
       const testDataCell = dataSheet.getRange(testDataRow, 14);
@@ -536,6 +539,8 @@ function addScaleDownFormatting() {
         continue;
       }
 
+      Logger.log(`Starting ${sheetName}`)
+
       replaceLegacyRules(legacyTemplateSheet, sh);
       testDataCell.setValue('done');
     }
@@ -546,20 +551,14 @@ function addScaleDownFormatting() {
     return;
   }
 
-  
-
   dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
 }
 
 function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
   const templateRules = legacyTemplateSheet.getConditionalFormatRules();
-  // const rules = [templateRules[0], templateRules[1], templateRules[2]].filter(Boolean);
 
-  // if (rules.length !== 3) {
-  //   throw new Error(`Legacy template missing rule 0-2. Found ${templateRules.length} rule(s).`);
-  // }
-
-  // const bodyRange = targetSheet.getRange('A5:P80');
+  // clear existing rules
+  targetSheet.setConditionalFormatRules([]);
 
   const rebuilt = templateRules.map((r) => {
     const bool = r.getBooleanCondition && r.getBooleanCondition();
