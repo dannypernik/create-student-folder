@@ -53,7 +53,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-
+    
 
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
     const maxDuration = 5.25 * 60 * 1000; // 5 minutes and 15 seconds in milliseconds

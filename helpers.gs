@@ -420,7 +420,6 @@ function updateActTestSheets() {
       }
 
       const testDataRow = testCodes.indexOf(sheetName) + 2;
-      Logger.log(testDataRow)
       const testDataCell = dataSheet.getRange(testDataRow, 14);
       if (testDataCell.getValue() === 'done') {
         Logger.log(`Skipping ${sheetName}`);
@@ -494,7 +493,7 @@ function updateActTestSheets() {
     }
   } catch (err) {
     Logger.log(err && err.stack ? err.stack : String(err));
-    ui.alert('Update is not finished. Please run update again.');
+    ui.alert(`Update is not finished. Please re-run "Update test sheets". ${err}`);
     return;
   }
 
@@ -547,7 +546,7 @@ function addScaleDownFormatting() {
   }
   catch (err) {
     Logger.log(err && err.stack ? err.stack : String(err));
-    ui.alert('Update is not finished. Please run update again.');
+    ui.alert(`Update is not finished. Please re-run "Add scaled down formatting". ${err}`);
     return;
   }
 
@@ -560,45 +559,56 @@ function replaceLegacyRules(legacyTemplateSheet = SpreadsheetApp.getActiveSpread
   // clear existing rules
   targetSheet.setConditionalFormatRules([]);
 
-  const rebuilt = templateRules.map((r) => {
-    const bool = r.getBooleanCondition && r.getBooleanCondition();
-    if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
-      throw new Error('Legacy rules be CUSTOM_FORMULA rules.');
-    }
+  const newRules = templateRules.map((r) => {
+    // rebuild ranges so they belong to targetSheet
+    const targetRanges = r.getRanges().map(a => targetSheet.getRange(a.getA1Notation()));
 
-    // 1) Rebuild ranges so they belong to targetSheet
-    const targetRanges = r.getRanges().map(tr => targetSheet.getRange(tr.getA1Notation()));
-
-    const formula = bool.getCriteriaValues()[0];
-
-    const b = SpreadsheetApp.newConditionalFormatRule()
-      .setRanges(targetRanges)
-      .whenFormulaSatisfied(formula);
-
-    const bg = r.getBackground && r.getBackground();
-    if (bg) b.setBackground(bg);
-
-    const fontColor = r.getFontColor && r.getFontColor();
-    if (fontColor) b.setFontColor(fontColor);
-
-    const bold = r.isBold && r.isBold();
-    if (bold !== null && bold !== undefined) b.setBold(!!bold);
-
-    const italic = r.isItalic && r.isItalic();
-    if (italic !== null && italic !== undefined) b.setItalic(!!italic);
-
-    const underline = r.isUnderline && r.isUnderline();
-    if (underline !== null && underline !== undefined) b.setUnderline(!!underline);
-
-    const strikethrough = r.isStrikethrough && r.isStrikethrough();
-    if (strikethrough !== null && strikethrough !== undefined) b.setStrikethrough(!!strikethrough);
-
-    return b.build();
+    // copy the rule, but replace its ranges
+    return r.copy().setRanges(targetRanges).build();
   });
 
-  // Replace ALL conditional formatting rules on the target sheet
-  targetSheet.setConditionalFormatRules(rebuilt);
+  targetSheet.setConditionalFormatRules(newRules);
 }
+
+//   const rebuilt = templateRules.map((r) => {
+//     const bool = r.getBooleanCondition && r.getBooleanCondition();
+//     if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
+//       throw new Error('Legacy rules be CUSTOM_FORMULA rules.');
+//     }
+
+//     // 1) Rebuild ranges so they belong to targetSheet
+//     const targetRanges = r.getRanges().map(tr => targetSheet.getRange(tr.getA1Notation()));
+
+//     const formula = bool.getCriteriaValues()[0];
+
+//     const b = SpreadsheetApp.newConditionalFormatRule()
+//       .setRanges(targetRanges)
+//       .whenFormulaSatisfied(formula);
+
+//     const bg = r.getBackground && r.getBackground();
+//     if (bg) b.setBackground(bg);
+
+//     const fontColor = r.getFontColor && r.getFontColor();
+//     if (fontColor) b.setFontColor(fontColor);
+
+//     const bold = r.isBold && r.isBold();
+//     if (bold !== null && bold !== undefined) b.setBold(!!bold);
+
+//     const italic = r.isItalic && r.isItalic();
+//     if (italic !== null && italic !== undefined) b.setItalic(!!italic);
+
+//     const underline = r.isUnderline && r.isUnderline();
+//     if (underline !== null && underline !== undefined) b.setUnderline(!!underline);
+
+//     const strikethrough = r.isStrikethrough && r.isStrikethrough();
+//     if (strikethrough !== null && strikethrough !== undefined) b.setStrikethrough(!!strikethrough);
+
+//     return b.build();
+//   });
+
+//   // Replace ALL conditional formatting rules on the target sheet
+//   
+// }
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   const testCodes = getSatTestCodes();
