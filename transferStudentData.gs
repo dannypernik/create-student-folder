@@ -53,10 +53,10 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-    
+
 
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
-    const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
+    const maxDuration = 5.25 * 60 * 1000; // 5 minutes and 15 seconds in milliseconds
     newStudentData = newAdminSs.getSheetByName('Student responses');
     initialImportFunction = newStudentData.getRange('A3').getFormula();
     const oldRevSheet = oldAdminSs.getSheetByName('Rev sheets');
@@ -103,6 +103,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     timestampRange.setValues(timestampValues);
     timestampRange.setNumberFormat('MM/dd/yyy h:mm:ss');
 
+    let newRevBackend = newAdminSs.getSheetByName('Rev sheet backend');
 
     if (oldRevSheet) {
       if (oldAdminSsId !== newAdminSs.getId()) {
@@ -112,7 +113,6 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
         let oldRevSs = SpreadsheetApp.openById(oldRevDataId)
         let oldRevDataStudentSheet = oldRevSs.getSheetByName(oldStudentName);
         let oldStudentRevData = oldRevDataStudentSheet.getRange(1,1,oldRevDataStudentSheet.getLastRow(), oldRevDataStudentSheet.getLastColumn()).getValues();
-        let newRevBackend = newAdminSs.getSheetByName('Rev sheet backend');
         let newRevDataCell = newRevBackend.getRange('U3');
         let newRevDataId = newRevDataCell.getValue();
         let newStudentName = newRevBackend.getRange('K2').getValue();
@@ -232,8 +232,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
           if (newAdminRanges[i] && newStudentRanges[i]) {
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
-              Logger.log("Exiting loop after 5 minutes and 30 seconds.");
-              throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Cleaning up.");
+              Logger.log("Exiting loop after 5 minutes and 15 seconds.");
+              throw new Error("Process exceeded maximum duration of 5 minutes and 15 seconds. Cleaning up.");
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
@@ -270,9 +270,12 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
 
     allNewAdminSheetValues.forEach(item => item.range.setValues(item.values));
     allNewStudentSheetValues.forEach(item => item.range.setValues(item.values));
+    const lastSyncedCell = newRevBackend.getRange('U10');
+    lastSyncedCell.setValue(new Date());
   }
   catch (err) {
-    errorNotification(err, newAdminSsId);
+    // errorNotification(err, newAdminSsId);
+    Logger.log(err);
   }
   finally {
     // revert student ID and SS permissions

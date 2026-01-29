@@ -554,7 +554,7 @@ function addScaleDownFormatting() {
   dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
 }
 
-function replaceLegacyRules(legacyTemplateSheet, targetSheet) {
+function replaceLegacyRules(legacyTemplateSheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0], targetSheet) {
   const templateRules = legacyTemplateSheet.getConditionalFormatRules();
 
   // clear existing rules
