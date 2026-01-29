@@ -389,18 +389,6 @@ function updateActTestSheets() {
     throw new Error('Missing template sheet(s): Admin legacy / Admin enhanced adjusted');
   }
 
-  // Header ranges in the template sheets
-  const LEGACY_HEADER_A1_P4 = legacyTemplateSheet.getRange('A1:P4');
-  const ENH_HEADER_A1_P4 = enhancedTemplateSheet.getRange('A1:P4');
-
-  // Capture BOTH formulas and values for headers
-  // (We write formulas first, then values to preserve constants/labels in the template)
-  const legacyHeaderFormulas = LEGACY_HEADER_A1_P4.getFormulasR1C1();
-  const legacyHeaderValues = LEGACY_HEADER_A1_P4.getValues();
-
-  const enhHeaderFormulas = ENH_HEADER_A1_P4.getFormulasR1C1();
-  const enhHeaderValues = ENH_HEADER_A1_P4.getValues();
-
   const dataSheet = ss.getSheetByName('Data');
   const testFilterCell = dataSheet.getRange('M2');
   testFilterCell.setFormula('=unique(A2:A)');
@@ -408,8 +396,11 @@ function updateActTestSheets() {
   const styleSheet = ss.getSheetByName('201904');
   if (!styleSheet) throw new Error('Missing style sheet: 201904');
   const headerBgColor = styleSheet.getRange('A1').getBackground();
-
   const testCodes = getActTestCodes();
+
+  const enhHeaderFormulasAndValues = getFormulasAndValues(enhancedTemplateSheet.getRange('A1:P4'));
+  const legacyHeaderFormulasAndValues = getFormulasAndValues(legacyTemplateSheet.getRange('A1:P4'));
+
 
   try {
     // Iterate only the test sheets by name, instead of scanning ss.getSheets()
@@ -453,13 +444,11 @@ function updateActTestSheets() {
 
         // Row 1
         sh.getRange('A1:P1')
-          .setFormulasR1C1(enhHeaderFormulas.slice(0, 1))
-          .setValues(enhHeaderValues.slice(0, 1));
+          .setValues(enhHeaderFormulasAndValues.slice(0, 1));
 
         // Rows 3–4 (skip row 2)
         sh.getRange('A3:P4')
-          .setFormulasR1C1(enhHeaderFormulas.slice(2, 4))
-          .setValues(enhHeaderValues.slice(2, 4));
+          .setValues(enhHeaderFormulasAndValues.slice(2, 4));
         compositeCell.setHorizontalAlignment('right');
         infoCell.setHorizontalAlignment('left');
       } //
@@ -470,13 +459,11 @@ function updateActTestSheets() {
 
         // Row 1
         sh.getRange('A1:P1')
-          .setFormulasR1C1(legacyHeaderFormulas.slice(0, 1))
-          .setValues(legacyHeaderValues.slice(0, 1));
+          .setValues(legacyHeaderFormulasAndValues.slice(0, 1));
 
         // Rows 3–4 (skip row 2)
         sh.getRange('A3:P4')
-          .setFormulasR1C1(legacyHeaderFormulas.slice(2, 4))
-          .setValues(legacyHeaderValues.slice(2, 4));
+          .setValues(legacyHeaderFormulasAndValues.slice(2, 4))
         compositeCell.setHorizontalAlignment('right');
         infoCell.setHorizontalAlignment('left');
         enhancedCheckCells.setFontColor(headerBgColor);
@@ -607,8 +594,9 @@ function replaceLegacyRules(legacyTemplateSheet = SpreadsheetApp.getActiveSpread
 //   });
 
 //   // Replace ALL conditional formatting rules on the target sheet
-//   
+//
 // }
+
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   const testCodes = getSatTestCodes();
@@ -1140,4 +1128,18 @@ function getDriveUrl(id) {
       return;
     }
   }
+}
+
+function getFormulasAndValues(range) {
+  const formulas = range.getFormulas();
+  const values = range.getValues();
+
+  for (let r = 0; r < formulas.length; r++) {
+    for (let c = 0; c < formulas[r].length; c++) {
+      if (formulas[r][c] === '') {
+        formulas[r][c] = values[r][c];
+      }
+    }
+  }
+  return formulas;
 }
