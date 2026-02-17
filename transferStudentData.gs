@@ -53,7 +53,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-    
+
 
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
     const maxDuration = 5.25 * 60 * 1000; // 5 minutes and 15 seconds in milliseconds
@@ -232,8 +232,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
           if (newAdminRanges[i] && newStudentRanges[i]) {
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
-              Logger.log("Exiting loop after 5 minutes and 15 seconds.");
-              throw new Error("Process exceeded maximum duration of 5 minutes and 15 seconds. Cleaning up.");
+              Logger.log("Process exceeded maximum duration of 5 minutes and 15 seconds. Performing cleanup.");
+              return;
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
