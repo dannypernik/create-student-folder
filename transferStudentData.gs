@@ -244,7 +244,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
               Logger.log("Exiting loop after 5 minutes and 15 seconds.");
-              throw new Error("Process exceeded maximum duration of 5 minutes and 15 seconds. Cleaning up.");
+              return;
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
