@@ -260,138 +260,45 @@ function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.g
 }
 
 
-// function updateActTestSheets() {
-//   const startTime = new Date().getTime(); // Record the start time
-//   const maxDuration = 5.5 * 60 * 1000; // 5 minutes and 30 seconds in milliseconds
-//   const ss = SpreadsheetApp.getActiveSpreadsheet();
-//   const ui = SpreadsheetApp.getUi();
-//   const button = ui.alert('Use official scoring?', ui.ButtonSet.YES_NO_CANCEL);
-//   let templateSs;
-
-//   if (button === ui.Button.YES) {
-//     templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
-//     ui.alert('Template SS has not been set up to enable official scoring.');
-//     return;
-//   } //
-//   else if (button === ui.Button.NO) {
-//     templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
-//   } //
-//   else {
-//     return;
-//   }
-
-//   const sheets = ss.getSheets();
-//   Logger.log(`Starting test codes`);
-//   const testCodes = getActTestCodes();
-//   Logger.log(`Retreived test codes`);
-
-//   const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
-//   const enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
-//   const newLegacySheet = legacyTemplateSheet.copyTo(ss);
-//   const newEnhancedSheet = enhancedTemplateSheet.copyTo(ss);
-
-//   Logger.log('Copied test sheets');
-
-//   const templateLegacyHeader = newLegacySheet.getRange('A1:P4');
-//   const templateLegacyAnswers = newLegacySheet.getRange('A5:P80');
-//   const templateEnhancedHeader = newEnhancedSheet.getRange('A1:P4');
-//   const templateEnhancedAnswers = newEnhancedSheet.getRange('A5:P55');
-//   const styleSheet = ss.getSheetByName('201904');
-//   const headerBgColor = styleSheet.getRange('A1').getBackground();
-//   // const headerFontColor = styleSheet.getFontColorObject().asRgbColor().asHexString();
-
-//   Logger.log(`Got ranges and colors`);
-
-//   // if (headerFontColor.toLowerCase() !== '#ffffff') {
-//   //   alert('Implement header font color');
-//   //   errorNotification('Implement header font color', ss.getId());
-//   // }
-
-//   try {
-//     for (let sh of sheets) {
-//       const currentTime = new Date().getTime();
-//       if (currentTime - startTime > maxDuration) {
-//         Logger.log("Exiting loop after 5 minutes and 30 seconds.");
-//         throw new Error("Process exceeded maximum duration of 5 minutes and 30 seconds. Cleaning up.");
-//       }
-
-//       const sheetName = sh.getName();
-//       if (testCodes.includes(sheetName)) {
-//         Logger.log('Get ranges');
-//         const mergeRanges = sh.getRange('A1:N1').getMergedRanges();
-//         const headerRange = sh.getRange('A1');
-//         const bodyRange = sh.getRange('A5');
-//         const compositeCell = sh.getRange('E1');
-//         const infoCell = sh.getRange('G1');
-//         const testCodeCell = sh.getRange('B1');
-//         const enhancedCheckCells = sh.getRangeList(['C3', 'G3', 'K3'])
-
-//         Logger.log('Start changes');
-//         mergeRanges.forEach(range => range.breakApart());
-//         if (sheetName > '202502') {
-//           // Enhanced
-//           templateEnhancedHeader.copyTo(headerRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
-//           templateEnhancedAnswers.copyTo(bodyRange);
-//           compositeCell.setHorizontalAlignment('right');
-//           infoCell.setHorizontalAlignment('left');
-//         } // Legacy
-//         else {
-//           templateLegacyHeader.copyTo(headerRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
-//           enhancedCheckCells.setFontColor(headerBgColor);
-//           templateLegacyAnswers.copyTo(bodyRange);
-//           compositeCell.setHorizontalAlignment('right');
-//           infoCell.setHorizontalAlignment('left');
-//         }
-//         // sh.getRange('A1:P4').setBackground(headerBgColor).setFontColor(headerFontColor).setBorder(true,true,true,true,true,true,headerBgColor,SpreadsheetApp.BorderStyle.SOLID);
-//         testCodeCell.setValue(sheetName);
-
-//         // setScoreColor(sh);
-
-//         Logger.log(`Updated ${sheetName}`);
-//       }
-//     }
-//   }
-//   catch (err) {
-//     Logger.log(err)
-//   }
-//   finally {
-//     ss.deleteSheet(newLegacySheet);
-//     ss.deleteSheet(newEnhancedSheet);
-//     Logger.log('Removed template sheets');
-//   }
-// }
-
 function updateActTestSheets() {
   const startTime = Date.now();
   const maxDuration = 5.5 * 60 * 1000; // 5m30s
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-
-  const button = ui.alert('Use official scoring?', ui.ButtonSet.YES_NO_CANCEL);
   const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
+  const dataSheet = ss.getSheetByName('Data');
+  const testFilterCell = dataSheet.getRange('M2');
+  const officialScoringCell = dataSheet.getRange('O2');
+  let isScoringOfficial = officialScoringCell.getValue();
 
-  let enhancedTemplateSheet;
+  let enhancedTemplateSheet, button;
+  
+  if (officialScoringCell.getValue() === '') {
+    button = ui.alert('Use official scoring?', ui.ButtonSet.YES_NO_CANCEL);
+    isScoringOfficial = null;
+  }
 
-  if (button === ui.Button.YES) {
+  if (isScoringOfficial || button === ui.Button.YES) {
     ui.alert('Template SS has not been set up to enable official scoring.');
     enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced official');
-    return;
-  } else if (button === ui.Button.NO) {
+    isScoringOfficial = true;
+  } //
+  else if (isScoringOfficial === false || button === ui.Button.NO) {
     enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
-  } else {
+    isScoringOfficial = false;
+  } //
+  else {
     return;
   }
 
-  // Template sheets (no need to copy them into ss anymore)
-  const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
-
+  testFilterCell.setFormula('=unique(A2:A)');
+  officialScoringCell.setValue(isScoringOfficial);
+  
   if (!legacyTemplateSheet || !enhancedTemplateSheet) {
     throw new Error('Missing template sheet(s): Admin legacy / Admin enhanced adjusted');
   }
 
-  const dataSheet = ss.getSheetByName('Data');
-  const testFilterCell = dataSheet.getRange('M2');
-  testFilterCell.setFormula('=unique(A2:A)');
   // Style reference
   const styleSheet = ss.getSheetByName('201904');
   if (!styleSheet) throw new Error('Missing style sheet: 201904');
@@ -484,7 +391,11 @@ function updateActTestSheets() {
     return;
   }
 
-  dataSheet.getRange(2, 13, testCodes.length, 2).setValue('');
+  dataSheet.getRange(2, 13, testCodes.length, 3).setValue('');
+  var htmlOutput = HtmlService.createHtmlOutput('Scoring formulas have been updated for all tests')
+    .setWidth(250)
+    .setHeight(100);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Update complete`);
 }
 
 function addScaleDownFormatting() {
@@ -733,7 +644,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
         newSheet.getRange('A5:P80').setFontColor(bodyFontColor);
 
         if (obj.isAdmin) {
-          setScoreColor(testSheet);
+          setScoreColor(newSheet);
         }
 
         const testCodeIndex = testCodes.indexOf(testCode);

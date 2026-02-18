@@ -5,6 +5,7 @@ function NewSatFolder(sourceFolderId, parentFolderId) {
 
   let ui = SpreadsheetApp.getUi();
   let prompt = ui.prompt('Student name:', ui.ButtonSet.OK_CANCEL);
+  let studentName;
 
   if (prompt.getSelectedButton() == ui.Button.CANCEL) {
     return;

@@ -53,7 +53,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-
+    
 
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
     const maxDuration = 5.25 * 60 * 1000; // 5 minutes and 15 seconds in milliseconds
@@ -186,10 +186,21 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
       let sheetName = answerSheets[s];
       let oldSheet = oldAdminSs.getSheetByName(sheetName);
       if (oldSheet) {
-        let subScore = oldSheet.getRange('G1:I1').getValues();
+        let rwScore = oldSheet.getRange('G1').getValue();
+        let mScore = oldSheet.getRange('I1').getValue();
+
+        if (!rwScore) {
+          rwScore = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!U$71:U$100,)";
+        }
+
+        if (!mScore) {
+          mScore = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!V$71:V$100,)";
+        }
+
         testScores.push({
-          'test': sheetName,
-          'scores': subScore
+          test: sheetName,
+          rwScore: rwScore,
+          mScore: mScore
         })
       }
     }
@@ -232,8 +243,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
           if (newAdminRanges[i] && newStudentRanges[i]) {
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
-              Logger.log("Process exceeded maximum duration of 5 minutes and 15 seconds. Performing cleanup.");
-              return;
+              Logger.log("Exiting loop after 5 minutes and 15 seconds.");
+              throw new Error("Process exceeded maximum duration of 5 minutes and 15 seconds. Cleaning up.");
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
@@ -243,6 +254,11 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
               // set blank cells blank for student sheet
               if (newAdminSheetValues[row][0] === 'not found') {
                 newAdminSheetValues[row][0] = '';
+              }
+              // preserve escape character
+              else if (newAdminSheetValues[row][0] === 'Answer') {
+                newAdminSheetValues[row][0] = "'Answer"
+                newAdminSheetFormulas[row][0] = "'Answer"
               }
               // save nonblank cells as values for admin sheet
               else if (newAdminSheetValues[row][0] !== '') {
@@ -263,7 +279,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
         }
         let testScore = testScores.find(score => score.test === sheetName);
         if (testScore) {
-          newAdminSheet.getRange('G1:I1').setValues(testScore.scores);
+          newAdminSheet.getRange('G1').setValue(testScore.rwScore);
+          newAdminSheet.getRange('I1').setValue(testScore.mScore);
         }
       }
     }
