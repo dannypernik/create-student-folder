@@ -531,51 +531,59 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
   ]
 
   for (testCode of testCodes) {
+    Logger.log(`Starting ${testCode}`);
     const testNumberPosition = testCode.indexOf('SAT') + 3;
     const testType = testCode.substring(0, testNumberPosition)
     const testNumber = testCode.substring(testNumberPosition);
 
-    for (obj of spreadsheets) {
-      const testSheet = obj.ss.getSheetByName(testCode);
+    if (testNumber > 3 || testType === 'PSAT') {
+      for (obj of spreadsheets) {
+        const ssName = obj.ss.getName();
+        Logger.log(`Starting ${ssName}`);
 
-      if (!testSheet) {
-        Logger.log(`Adding ${testCode} sheet to ${obj.ss.getName()}`);
-        const templateSheet = obj.templateSheet;
-        const newSheet = templateSheet.copyTo(obj.ss).setName(testCode);
-        const prevTestPostition = obj.ss.getSheetByName(testType + String(testNumber - 1)).getIndex();
-        obj.ss.setActiveSheet(newSheet);
-        obj.ss.moveActiveSheet(prevTestPostition + 1);
+        const testSheet = obj.ss.getSheetByName(testCode);
+        if (!testSheet) {
+          Logger.log(`Adding ${testCode} sheet to ${ssName}`);
+          const templateSheet = obj.templateSheet;
+          const newSheet = templateSheet.copyTo(obj.ss).setName(testCode);
+          const prevTestPostition = obj.ss.getSheetByName(testType + String(testNumber - 1)).getIndex();
+          obj.ss.setActiveSheet(newSheet);
+          obj.ss.moveActiveSheet(prevTestPostition + 1);
 
-        newSheet.getRange('A2').setValue(testType);
-        newSheet.getRange('A3').setValue(testNumber);
+          newSheet.getRange('A2').setValue(testType);
+          newSheet.getRange('A3').setValue(testNumber);
 
-        const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1]), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
+          const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1]), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
 
-        const colARange = newSheet.getRange('A5:A57');
-        const colERange = newSheet.getRange('E5:E57');
-        const colIRange = newSheet.getRange('I5:I57');
+          const colARange = newSheet.getRange('A5:A57');
+          const colERange = newSheet.getRange('E5:E57');
+          const colIRange = newSheet.getRange('I5:I57');
 
-        colARange.setValue(questionCodeFormulaR1C1);
-        colERange.setValue(questionCodeFormulaR1C1);
-        colIRange.setValue(questionCodeFormulaR1C1);
+          colARange.setValue(questionCodeFormulaR1C1);
+          colERange.setValue(questionCodeFormulaR1C1);
+          colIRange.setValue(questionCodeFormulaR1C1);
 
-        SpreadsheetApp.flush();
+          SpreadsheetApp.flush();
 
-        colARange.copyTo(colARange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
-        colERange.copyTo(colERange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
-        colIRange.copyTo(colIRange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
+          colARange.copyTo(colARange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
+          colERange.copyTo(colERange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
+          colIRange.copyTo(colIRange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
+        }
       }
-    }
 
-    if (!adminSs.getSheetByName(testCode + ' analysis')) {
-      const newAnalysisSheet = adminTemplateSs.getSheetByName('SAT4 analysis').copyTo(adminSs).setName(`${testCode} analysis`);
-      const prevAnalysisPostition = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis').getIndex();
-      adminSs.setActiveSheet(newAnalysisSheet)
-      adminSs.moveActiveSheet(prevAnalysisPostition + 1);
+      if (!adminSs.getSheetByName(testCode + ' analysis')) {
+        const newAnalysisSheet = adminTemplateSs.getSheetByName('SAT4 analysis').copyTo(adminSs).setName(`${testCode} analysis`);
+        const prevAnalysisSheet = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis');
+        if (prevAnalysisSheet) {
+          const prevAnalysisPostition = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis').getIndex();
+          adminSs.setActiveSheet(newAnalysisSheet)
+          adminSs.moveActiveSheet(prevAnalysisPostition + 1);
+        }
 
-      newAnalysisSheet.getRange('A7').setValue(testType);
-      newAnalysisSheet.getRange('A8').setValue(testNumber);
-      Logger.log(`Added ${testCode} analysis sheet to ${adminSs.getName()}`)
+        newAnalysisSheet.getRange('A7').setValue(testType);
+        newAnalysisSheet.getRange('A8').setValue(testNumber);
+        Logger.log(`Added ${testCode} analysis sheet to ${adminSs.getName()}`)
+      }
     }
   }
 }
