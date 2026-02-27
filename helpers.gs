@@ -241,7 +241,7 @@ function getActTestData(ssId, testCode) {
   }
 }
 
-function getActTestCodes(dataSheet = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actMasterDataSsId')).getSheetByName('ACT Answers')) {
+function getActTestCodes(dataSheet = SpreadsheetApp.openById(ACT_MASTER_DATA_SS_ID).getSheetByName('ACT Answers')) {
   // Only column A, from row 2 down to last row
   const lastRow = dataSheet.getLastRow();
   if (lastRow < 2) return [];
@@ -265,7 +265,7 @@ function updateActTestSheets() {
   const maxDuration = 5.5 * 60 * 1000; // 5m30s
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const templateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
   const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
   const dataSheet = ss.getSheetByName('Data');
   const testFilterCell = dataSheet.getRange('M2');
@@ -407,7 +407,7 @@ function addScaleDownFormatting() {
   const dataSheet = ss.getSheetByName('Data');
   const testFilterCell = dataSheet.getRange('M2');
   testFilterCell.setFormula('=unique(A2:A)');
-  const templateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const templateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
   const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
 
   try {
@@ -512,12 +512,26 @@ function replaceLegacyRules(legacyTemplateSheet = SpreadsheetApp.getActiveSpread
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
   const testCodes = getSatTestCodes();
   const adminSs = SpreadsheetApp.openById(adminSsId);
-  const adminTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('satAdminTemplateSsId'));
-  const adminTemplateSheet = adminTemplateSs.getSheetByName('SAT4');
+
+  let adminTemplateSheet = adminSs.getSheetByName('SAT4');
+  let adminAnalysisTemplate = adminSs.getSheetByName('SAT4 analysis');
+  if (!adminTemplateSheet) {
+    const adminTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
+    adminTemplateSheet = adminTemplateSs.getSheetByName('SAT admin');
+  }
+
+  if (!adminAnalysisTemplate) {
+    adminAnalysisTemplate = adminTemplateSs.getSheetByName('SAT analysis');
+  }
+
   const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const studentSs = SpreadsheetApp.openById(studentSsId);
-  const studentTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('satStudentTemplateSsId'));
-  const studentTemplateSheet = studentTemplateSs.getSheetByName('SAT4');
+  let studentTemplateSheet = studentSs.getSheetByName('SAT4');
+
+  if (!studentTemplateSheet) {
+    const studentTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
+    studentTemplateSheet = studentTemplateSs.getSheetByName('SAT student');
+  }
 
   const spreadsheets = [
     {
@@ -531,7 +545,6 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
   ]
 
   for (testCode of testCodes) {
-    Logger.log(`Starting ${testCode}`);
     const testNumberPosition = testCode.indexOf('SAT') + 3;
     const testType = testCode.substring(0, testNumberPosition)
     const testNumber = testCode.substring(testNumberPosition);
@@ -539,9 +552,8 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
     if (testNumber > 3 || testType === 'PSAT') {
       for (obj of spreadsheets) {
         const ssName = obj.ss.getName();
-        Logger.log(`Starting ${ssName}`);
-
         const testSheet = obj.ss.getSheetByName(testCode);
+        
         if (!testSheet) {
           Logger.log(`Adding ${testCode} sheet to ${ssName}`);
           const templateSheet = obj.templateSheet;
@@ -552,6 +564,10 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
 
           newSheet.getRange('A2').setValue(testType);
           newSheet.getRange('A3').setValue(testNumber);
+
+          newSheet.getRange('B1').setFormula('=A2&" Adaptive Test "&A3&" "&"(Bluebook)"');
+          newSheet.getRange('B2').setFormula('=A2&A3&" RW"');
+          newSheet.getRange('B33').setFormula('=A2&A3&" M"');
 
           const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1]), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
 
@@ -572,7 +588,7 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
       }
 
       if (!adminSs.getSheetByName(testCode + ' analysis')) {
-        const newAnalysisSheet = adminTemplateSs.getSheetByName('SAT4 analysis').copyTo(adminSs).setName(`${testCode} analysis`);
+        const newAnalysisSheet = adminAnalysisTemplate.copyTo(adminSs).setName(`${testCode} analysis`);
         const prevAnalysisSheet = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis');
         if (prevAnalysisSheet) {
           const prevAnalysisPostition = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis').getIndex();
@@ -600,7 +616,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
 
   const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const studentSs = SpreadsheetApp.openById(studentSsId);
-  const actTemplateSs = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('actTemplateSsId'));
+  const actTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
   const adminTemplateSheet = actTemplateSs.getSheetByName('Admin legacy');
   const adminEnhancedTemplateSheet = actTemplateSs.getSheetByName('Admin enhanced adjusted');
   const studentTemplateSheet = actTemplateSs.getSheetByName('Student legacy');

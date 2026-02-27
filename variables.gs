@@ -1,5 +1,7 @@
 const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccount.com';
 const ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
+const TEMPLATE_SHEETS_SS_ID = PropertiesService.getScriptProperties().getProperty('templateSheetsSsId');
+const ACT_MASTER_DATA_SS_ID = PropertiesService.getScriptProperties().getProperty('actMasterDataSsId');
 dataLatestDate = '08/2025';
 isUpdateAvailable = false;
 areNewSatTestsAvailable = true;
