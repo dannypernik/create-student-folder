@@ -575,6 +575,13 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
           const colERange = newSheet.getRange('E5:E57');
           const colIRange = newSheet.getRange('I5:I57');
 
+          const responseR1C1Formula = '=if(R[0]C[-1]="","",xlookup(R[0]C[-2],\'Student responses\'!$G$4:$G,\'Student responses\'!$H$4:$H,"not found"))'
+          const responseRanges = ['C5:C31', 'G5:G31', 'K5:K31', 'C36:C57', 'G36:G57', 'K36:K57'];
+
+          for (let range of responseRanges) {
+            newSheet.getRange(range).setValue(responseR1C1Formula);
+          }
+
           colARange.setValue(questionCodeFormulaR1C1);
           colERange.setValue(questionCodeFormulaR1C1);
           colIRange.setValue(questionCodeFormulaR1C1);
