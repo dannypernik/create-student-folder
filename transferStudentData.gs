@@ -96,7 +96,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
 
     for (let row = 0; row < timestampValues.length; row ++) {
       let ssRow = row + 2;
-      if (timestampValues[row][0] === '') {
+      if (timestampValues[row][0] === '' || timestampValues[row][0][0] === '#') {
         timestampValues[row][0] = '=if(or(G' + ssRow + '="",I' + ssRow + '=""),"",if(K' + ssRow + ',K' + ssRow + ',if(I' + ssRow + '="","",now())))'
       }
     }
@@ -190,11 +190,11 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
         let mScore = oldSheet.getRange('I1').getValue();
 
         if (!rwScore) {
-          rwScore = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!U$71:U$100,)";
+          rwScore = RW_SCORE_LOOKUP;
         }
 
         if (!mScore) {
-          mScore = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!V$71:V$100,)";
+          mScore = MATH_SCORE_LOOKUP;
         }
 
         testScores.push({

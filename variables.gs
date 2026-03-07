@@ -2,6 +2,8 @@ const SERVICE_ACCOUNT_EMAIL = 'score-reports@sat-score-reports.iam.gserviceaccou
 const ADMIN_EMAIL = PropertiesService.getScriptProperties().getProperty('adminEmail');
 const TEMPLATE_SHEETS_SS_ID = PropertiesService.getScriptProperties().getProperty('templateSheetsSsId');
 const ACT_MASTER_DATA_SS_ID = PropertiesService.getScriptProperties().getProperty('actMasterDataSsId');
+const RW_SCORE_LOOKUP = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!U$71:U$100,)";
+const MATH_SCORE_LOOKUP = "=XLOOKUP($A$2&$A$3,'Rev sheet backend'!$T$71:$T$100,'Rev sheet backend'!V$71:V$100,)";
 dataLatestDate = '08/2025';
 isUpdateAvailable = false;
 areNewSatTestsAvailable = true;

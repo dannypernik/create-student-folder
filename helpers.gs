@@ -468,144 +468,148 @@ function replaceLegacyRules(legacyTemplateSheet = SpreadsheetApp.getActiveSpread
   targetSheet.setConditionalFormatRules(newRules);
 }
 
-//   const rebuilt = templateRules.map((r) => {
-//     const bool = r.getBooleanCondition && r.getBooleanCondition();
-//     if (!bool || bool.getCriteriaType() !== SpreadsheetApp.BooleanCriteria.CUSTOM_FORMULA) {
-//       throw new Error('Legacy rules be CUSTOM_FORMULA rules.');
-//     }
-
-//     // 1) Rebuild ranges so they belong to targetSheet
-//     const targetRanges = r.getRanges().map(tr => targetSheet.getRange(tr.getA1Notation()));
-
-//     const formula = bool.getCriteriaValues()[0];
-
-//     const b = SpreadsheetApp.newConditionalFormatRule()
-//       .setRanges(targetRanges)
-//       .whenFormulaSatisfied(formula);
-
-//     const bg = r.getBackground && r.getBackground();
-//     if (bg) b.setBackground(bg);
-
-//     const fontColor = r.getFontColor && r.getFontColor();
-//     if (fontColor) b.setFontColor(fontColor);
-
-//     const bold = r.isBold && r.isBold();
-//     if (bold !== null && bold !== undefined) b.setBold(!!bold);
-
-//     const italic = r.isItalic && r.isItalic();
-//     if (italic !== null && italic !== undefined) b.setItalic(!!italic);
-
-//     const underline = r.isUnderline && r.isUnderline();
-//     if (underline !== null && underline !== undefined) b.setUnderline(!!underline);
-
-//     const strikethrough = r.isStrikethrough && r.isStrikethrough();
-//     if (strikethrough !== null && strikethrough !== undefined) b.setStrikethrough(!!strikethrough);
-
-//     return b.build();
-//   });
-
-//   // Replace ALL conditional formatting rules on the target sheet
-//
-// }
-
 
 function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getId()) {
-  const testCodes = getSatTestCodes();
   const adminSs = SpreadsheetApp.openById(adminSsId);
+  const responseSheet = adminSs.getSheetByName('Student responses');
+  const ssIds = [adminSsId]
 
-  let adminTemplateSheet = adminSs.getSheetByName('SAT4');
-  let adminAnalysisTemplate = adminSs.getSheetByName('SAT4 analysis');
-  if (!adminTemplateSheet) {
-    const adminTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
-    adminTemplateSheet = adminTemplateSs.getSheetByName('SAT admin');
-  }
-
-  if (!adminAnalysisTemplate) {
-    adminAnalysisTemplate = adminTemplateSs.getSheetByName('SAT analysis');
-  }
-
-  const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
-  const studentSs = SpreadsheetApp.openById(studentSsId);
-  let studentTemplateSheet = studentSs.getSheetByName('SAT4');
-
-  if (!studentTemplateSheet) {
-    const studentTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
-    studentTemplateSheet = studentTemplateSs.getSheetByName('SAT student');
-  }
-
-  const spreadsheets = [
-    {
-      'ss': studentSs,
-      'templateSheet': studentTemplateSheet
-    },
-    {
-      'ss': adminSs,
-      'templateSheet': adminTemplateSheet
+  if (responseSheet) {
+    const studentSsId = responseSheet.getRange('B1').getValue();
+    if (studentSsId) {
+      ssIds.push(studentSsId);
     }
-  ]
+  }
 
-  for (testCode of testCodes) {
-    const testNumberPosition = testCode.indexOf('SAT') + 3;
-    const testType = testCode.substring(0, testNumberPosition)
-    const testNumber = testCode.substring(testNumberPosition);
+  const testCodes = getSatTestCodes();
+  Logger.log(`testCodes: ${testCodes}`);
+  const templateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
 
-    if (testNumber > 3 || testType === 'PSAT') {
-      for (obj of spreadsheets) {
-        const ssName = obj.ss.getName();
-        const testSheet = obj.ss.getSheetByName(testCode);
+  for (const id of ssIds) {
+    const ss = SpreadsheetApp.openById(id);
+    const isAdminSs = id === adminSsId;
+    const ssName = ss.getName();
+    const questionCodeRanges = ['A5:A57', 'E5:E57', 'I5:I57'];
+    const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1],), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
+    const responseRanges = ['C5:C31', 'G5:G31', 'K5:K31', 'C36:C57', 'G36:G57', 'K36:K57'];
+    const responseFormulaR1C1 = '=if(R[0]C[-1]="","",xlookup(R[0]C[-2],\'Student responses\'!$G$4:$G,\'Student responses\'!$H$4:$H,"not found"))'
+    
+    for (const testCode of testCodes) {
+      const testNumberPosition = testCode.indexOf('SAT') + 3;
+      const testType = testCode.substring(0, testNumberPosition)
+      const testNumber = Number(testCode.substring(testNumberPosition));
+
+      if (testNumber > 3 || testType === 'PSAT') {
+        const testSheet = ss.getSheetByName(testCode);
+
+        let templateSheet = ss.getSheetByName('SAT4');
+        let analysisTemplate = ss.getSheetByName('SAT4 analysis');
         
+        if (!templateSheet) {
+          if (isAdminSs) {
+            templateSheet = templateSs.getSheetByName('SAT admin');
+          }
+          else {
+            templateSheet = templateSs.getSheetByName('SAT student');
+          }
+        }
+
+        if (isAdminSs && !analysisTemplate) {
+          analysisTemplate = templateSs.getSheetByName('SAT analysis');
+        }
+
         if (!testSheet) {
           Logger.log(`Adding ${testCode} sheet to ${ssName}`);
-          const templateSheet = obj.templateSheet;
-          const newSheet = templateSheet.copyTo(obj.ss).setName(testCode);
-          const prevTestPostition = obj.ss.getSheetByName(testType + String(testNumber - 1)).getIndex();
-          obj.ss.setActiveSheet(newSheet);
-          obj.ss.moveActiveSheet(prevTestPostition + 1);
+          const newTestSheet = templateSheet.copyTo(ss).setName(testCode);
+          const prevTestCode = testType + String(testNumber - 1);
+          const prevTestSheet = ss.getSheetByName(prevTestCode);
+          const prevAnalysisSheet = ss.getSheetByName(prevTestCode + ' analysis');
+          let prevTestPosition, prevAnalysisPosition;
 
-          newSheet.getRange('A2').setValue(testType);
-          newSheet.getRange('A3').setValue(testNumber);
+          if (prevTestSheet) {
+            prevTestPosition = prevTestSheet.getIndex();
+          }
+          if (prevAnalysisSheet) {
+            prevAnalysisPosition = prevAnalysisSheet.getIndex();
+          }
+          ss.setActiveSheet(newTestSheet);
 
-          newSheet.getRange('B1').setFormula('=A2&" Adaptive Test "&A3&" "&"(Bluebook)"');
-          newSheet.getRange('B2').setFormula('=A2&A3&" RW"');
-          newSheet.getRange('B33').setFormula('=A2&A3&" M"');
-
-          const questionCodeFormulaR1C1 = '=iferror(let(worksheetNum,if(R[0]C[1]<>"",R[0]C[1]), qNum,right(worksheetNum,len(worksheetNum)-search(".",worksheetNum)),offset(R[0]C2,-1*qNum-2,0)&" "&worksheetNum),)';
-
-          const colARange = newSheet.getRange('A5:A57');
-          const colERange = newSheet.getRange('E5:E57');
-          const colIRange = newSheet.getRange('I5:I57');
-
-          const responseR1C1Formula = '=if(R[0]C[-1]="","",xlookup(R[0]C[-2],\'Student responses\'!$G$4:$G,\'Student responses\'!$H$4:$H,"not found"))'
-          const responseRanges = ['C5:C31', 'G5:G31', 'K5:K31', 'C36:C57', 'G36:G57', 'K36:K57'];
-
-          for (let range of responseRanges) {
-            newSheet.getRange(range).setValue(responseR1C1Formula);
+          if (prevTestPosition && prevAnalysisPosition && (prevAnalysisPosition - prevTestPosition === 1)) {
+            ss.moveActiveSheet(prevAnalysisPosition + 1);
+          } //
+          else {
+            ss.moveActiveSheet(prevTestPosition + 1);
           }
 
-          colARange.setValue(questionCodeFormulaR1C1);
-          colERange.setValue(questionCodeFormulaR1C1);
-          colIRange.setValue(questionCodeFormulaR1C1);
+          newTestSheet.getRange('A2').setValue(testType);
+          newTestSheet.getRange('A3').setValue(testNumber);
+          newTestSheet.getRange('B1').setFormula('=A2&" Adaptive Test "&A3&" "&"(Bluebook)"');
+          newTestSheet.getRange('B2').setFormula('=A2&A3&" RW"');
+          newTestSheet.getRange('B33').setFormula('=A2&A3&" M"');
+
+          for (let range of questionCodeRanges) {
+            newTestSheet.getRange(range).setValue(questionCodeFormulaR1C1).setHorizontalAlignment('left');
+          }
 
           SpreadsheetApp.flush();
 
-          colARange.copyTo(colARange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
-          colERange.copyTo(colERange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
-          colIRange.copyTo(colIRange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false)
-        }
-      }
+          for (let range of questionCodeRanges) {
+            const newRange = newTestSheet.getRange(range);
+            newRange.copyTo(newRange, SpreadsheetApp.CopyPasteType.PASTE_VALUES, false);
+          }
 
-      if (!adminSs.getSheetByName(testCode + ' analysis')) {
-        const newAnalysisSheet = adminAnalysisTemplate.copyTo(adminSs).setName(`${testCode} analysis`);
-        const prevAnalysisSheet = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis');
-        if (prevAnalysisSheet) {
-          const prevAnalysisPostition = obj.ss.getSheetByName(testType + String(testNumber - 1) + ' analysis').getIndex();
-          adminSs.setActiveSheet(newAnalysisSheet)
-          adminSs.moveActiveSheet(prevAnalysisPostition + 1);
+          if (isAdminSs) {
+            if (responseSheet) {
+              for (let range of responseRanges) {
+                newTestSheet.getRange(range).setValue(responseFormulaR1C1);
+              }
+              newTestSheet.getRange('G1').setFormula(RW_SCORE_LOOKUP);
+              newTestSheet.getRange('I1').setFormula(MATH_SCORE_LOOKUP);
+            } //
+            else {
+              newTestSheet.getRange('G1').clearContent();
+              newTestSheet.getRange('I1').clearContent();
+            }
+          } //
+          else {
+            for (let range of responseRanges) {
+              newTestSheet.getRange(range).clearContent();
+            }
+            newTestSheet.getRange('G1').clearContent();
+            newTestSheet.getRange('I1').clearContent();
+          }
+          newTestSheet.getRange('C2:D2').clearContent();
+          newTestSheet.getRange('C33:D33').clearContent();
         }
 
-        newAnalysisSheet.getRange('A7').setValue(testType);
-        newAnalysisSheet.getRange('A8').setValue(testNumber);
-        Logger.log(`Added ${testCode} analysis sheet to ${adminSs.getName()}`)
+        if (isAdminSs && !ss.getSheetByName(testCode + ' analysis')) {
+          const newAnalysisSheet = analysisTemplate.copyTo(ss).setName(`${testCode} analysis`);
+          const prevTestCode = testType + String(testNumber - 1);
+          const testSheet = ss.getSheetByName(testCode);
+          const prevAnalysisSheet = ss.getSheetByName(prevTestCode + ' analysis');
+          let testPosition, prevAnalysisPosition;
+
+          if (testSheet){
+            testPosition = testSheet.getIndex();
+          }
+          if (prevAnalysisSheet){
+            prevAnalysisPosition = prevAnalysisSheet.getIndex();
+          }
+
+          ss.setActiveSheet(newAnalysisSheet);
+
+          if (testPosition && prevAnalysisPosition && (testPosition > prevAnalysisPosition)) {
+            ss.moveActiveSheet(testPosition + 1);
+          } //
+          else {
+            const nextPosition = (prevAnalysisPosition ?? testPosition) + 1;
+            ss.moveActiveSheet(nextPosition);
+          }
+
+          newAnalysisSheet.getRange('A7').setValue(testType);
+          newAnalysisSheet.getRange('A8').setValue(testNumber);
+          Logger.log(`Added ${testCode} analysis sheet to ${ss.getName()}`)
+        }
       }
     }
   }
@@ -751,6 +755,26 @@ function getActPageBreakRow(sheet) {
   else {
     return 80;
   }
+}
+
+function updateFilterColumn(col = 11, fallbackCriteria=SpreadsheetApp.newFilterCriteria().whenDateAfter(SpreadsheetApp.RelativeDate.PAST_WEEK), sheetName = 'Question bank data') {
+  const sh = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  const filter = sh.getFilter();
+  if (!filter) return;
+
+  let crit = filter.getColumnFilterCriteria(col);
+  if (!crit) {
+    crit = fallbackCriteria.build();
+  } //
+  filter.setColumnFilterCriteria(col, crit);
+}
+
+function clearFilterColumn(col = 11, sheetName = 'Question bank data') {
+  const sh = SpreadsheetApp.getActive().getSheetByName(sheetName);
+  const filter = sh.getFilter();
+  if (!filter) return;
+  
+  filter.removeColumnFilterCriteria(col);
 }
 
 function getLastFilledRow(sheet, col) {
