@@ -6,8 +6,8 @@ function getAllStudentData(
     studentsData: null,
     studentsDataCell: null
   },
-  checkAllKeys=false)
-  {
+  checkAllKeys=false) {
+  
   const index = client.index || 0;
 
   Logger.log(index + '. ' + client.name + ' started');
@@ -65,7 +65,7 @@ function getAllStudentData(
 
     studentObj.name = studentName;
     studentObj.updateComplete = true
-    client.studentsData = updateStudentsJSON(studentObj, client.studentsData);
+    client.studentsData = addStudentToData(studentObj, client.studentsData);
 
     if (client.studentsDataCell) {
       client.studentsDataCell.setValue(JSON.stringify(client.studentsData));
@@ -178,9 +178,18 @@ function getSsIds(studentFolderId, testType) {
   return ssIds;
 }
 
-function updateStudentsJSON(studentData, studentsJSON) {
-  let existing = studentsJSON.find(obj => obj.folderId === studentData.folderId);
+function addStudentToData(studentData, allStudentsData=[]) {
+  let existing = allStudentsData.find(obj => obj.folderId === studentData.folderId);
 
+  let isValidFolder;
+  try {
+    const folder = DriveApp.getFolderById(studentData.folderId);
+    isValidFolder = !folder.isTrashed()
+  } //
+  catch (e) {
+    isValidFolder = false;
+  }
+  
   if (existing) {
     let changed = false;
     for (let key in studentData) {
@@ -194,12 +203,16 @@ function updateStudentsJSON(studentData, studentsJSON) {
       Logger.log(`${studentData.name} unchanged`);
     }
   } //
+  else if (!isValidFolder) {
+    SpreadsheetApp.getUi().alert(`Folder ID ${studentData.folderId} for ${studentData.name} is invalid`);
+    return;
+  }
   else {
-    studentsJSON.push(studentData);
+    allStudentsData.push(studentData);
     Logger.log(`Added ${studentData.name}`);
   }
 
-  return studentsJSON;
+  return allStudentsData;
 }
 
 function getSatTestCodes() {
@@ -613,6 +626,61 @@ function addSatTestSheets(adminSsId = SpreadsheetApp.getActiveSpreadsheet().getI
       }
     }
   }
+}
+
+function addAllSatTestSheets() {
+  const ui = SpreadsheetApp.getUi();
+  const revBackend = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rev sheet backend');
+  const folderCell = revBackend.getRange('Y3');
+  let folderId = folderCell.getValue();
+  const progressCell = revBackend.getRange('Z3');
+
+  if (!folderId) {
+    const prompt = ui.prompt('URL of folder where student folders reside (leave blank to use the template folder\'s parent folder):', ui.ButtonSet.OK_CANCEL);
+    const url = prompt.getResponseText();
+
+    if (url === '') {
+      const ssFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+      folderId = ssFile.getParents().next().getParents().next().getId();
+    }
+    else {
+      folderId = getIdFromDriveUrl(url);
+    }
+
+    folderCell.setValue(folderId);
+  }
+  const parentFolder = DriveApp.getFolderById(folderId);
+  const studentFolders = parentFolder.getFolders();
+  const studentFolderList = sortFoldersByName(studentFolders);
+  let htmlOutput;
+
+  const progressVal = progressCell.getValue() || 0;
+
+  for (let i=progressVal; i < studentFolderList.length; i++) {
+    const folder = studentFolderList[i];
+    const files = folder.getFiles();
+
+    while (files.hasNext()) {
+      const file = files.next();
+
+      if (!folder.getName().includes('Ξ') && file.getName().toLowerCase().includes('sat admin')) {
+        const satAdminSsId = file.getId();
+
+        addSatTestSheets(satAdminSsId);
+        progressCell.setValue(i + 1);
+        htmlOutput = HtmlService.createHtmlOutput('Continuing').setWidth(400).setHeight(100);
+        ui.showModalDialog(htmlOutput, `${folder.getName()} complete`)
+      }
+    }
+  }
+
+  folderCell.clearContent();
+  progressCell.clearContent();
+
+  htmlOutput = HtmlService.createHtmlOutput(`Tests have been added to all folders within ${parentFolder.getName()}`)
+    .setWidth(400)
+    .setHeight(100);
+  ui.showModalDialog(htmlOutput, `Update complete`);
 }
 
 function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
@@ -1070,7 +1138,7 @@ function errorNotification(error, ssId) {
   `
   MailApp.sendEmail({
     to: ADMIN_EMAIL,
-    subject: `Spreadsheet error: ${error.message}`,
+    subject: `Spreadsheet error`,
     htmlBody: message
   });
 

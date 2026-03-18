@@ -101,11 +101,11 @@ function getFolderIds(sourceFolderId, parentFolderId) {
 }
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', studentData={}) {
+  const sourceFolder = DriveApp.getFolderById(sourceFolderId);
+  const newFolder = DriveApp.getFolderById(newFolderId);
+  const newFolderName = newFolder.getName();
+  Logger.log(`${newFolderName} folder started`)
   try {
-    const sourceFolder = DriveApp.getFolderById(sourceFolderId);
-    const newFolder = DriveApp.getFolderById(newFolderId);
-    const newFolderName = newFolder.getName();
-    Logger.log(`${newFolderName} folder started`)
 
     var files = sourceFolder.getFiles();
     let testType;
@@ -162,6 +162,9 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
           studentData.actStudentSsId = newFileId;
         }
       }
+      else if (filename.toLowerCase().includes('homework')) {
+        studentData.homeworkSsId = newFileId;
+      }
 
       if (testType !== 'ACT' && !studentData.isSatLinked && studentData.satAdminSsId && studentData.satStudentSsId) {
         linkSatFiles(studentData.satAdminSsId, studentData.satStudentSsId, studentName);
@@ -210,6 +213,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
 
       if (folderName === 'Student') {
         targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
+        studentData.studentFolderId = targetFolder.getId();
       }
       else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
         targetFolder = newFolder.getParents().next().createFolder(folderName);
@@ -243,7 +247,13 @@ function linkSatFiles(satAdminSsId, satStudentSsId, studentName='') {
   const satStudentFile = DriveApp.getFileById(satStudentSsId);
   satAdminFile.addEditor(SERVICE_ACCOUNT_EMAIL);
   satStudentFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-  satStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  
+  try {
+    satStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  }
+  catch(e) {
+    Logger.log('Unable to set sharing of SAT student file.');
+  }
 
   const satAdminSs = SpreadsheetApp.openById(satAdminSsId);
   const revBackend = satAdminSs.getSheetByName('Rev sheet backend');
