@@ -101,144 +101,155 @@ function getFolderIds(sourceFolderId, parentFolderId) {
 }
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', studentData={}) {
-  const sourceFolder = DriveApp.getFolderById(sourceFolderId);
-  const newFolder = DriveApp.getFolderById(newFolderId);
-  const newFolderName = newFolder.getName();
-  Logger.log(`${newFolderName} folder started`)
+  let sourceFolder, newFolder, newFolderName;
   try {
-
-    var files = sourceFolder.getFiles();
-    let testType;
-
-    if (folderType.toLowerCase() === 'sat') {
-      testType = 'SAT';
-    } //
-    else if (folderType.toLowerCase() === 'act') {
-      testType = 'ACT';
-    } //
-    else {
-      testType = 'Test';
-    }
-
-    let fileOperations = [];
-
-    while (files.hasNext()) {
-      const file = files.next();
-      const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
-      let filename = file.getName();
-
-      if (prefixFiles.includes(filename)) {
-        filename = studentName + ' ' + filename;
-      }
-      else if (filename.toLowerCase().includes('template')) {
-        const rootName = filename.slice(0, filename.indexOf('-') + 2);
-        filename = rootName + studentName;
-      }
-
-      const newFile = file.makeCopy(filename, newFolder);
-      const newFilename = newFile.getName().toLowerCase();
-      const newFileId = newFile.getId();
-
-      if (newFilename.includes('tutoring notes')) {
-        const ss = SpreadsheetApp.openById(newFileId);
-        const sheet = ss.getSheetByName('Session notes');
-        shId = sheet.getSheetId();
-        sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + newFileId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")');
-      }
-
-      if (filename.toLowerCase().includes('answer analysis')) {
-        if (filename.includes('SAT') && testType !== 'ACT') {
-          studentData.satAdminSsId = newFileId;
-        } //
-        else if (filename.includes('ACT') && testType !== 'SAT') {
-          studentData.actAdminSsId = newFileId;
-        }
-      } //
-      else if (filename.toLowerCase().includes('student answer sheet')) {
-        if (filename.includes('SAT') && testType !== 'ACT') {
-          studentData.satStudentSsId = newFileId;
-        } //
-        else if (filename.includes('ACT') && testType !== 'SAT') {
-          studentData.actStudentSsId = newFileId;
-        }
-      }
-      else if (filename.toLowerCase().includes('homework')) {
-        studentData.homeworkSsId = newFileId;
-      }
-
-      if (testType !== 'ACT' && !studentData.isSatLinked && studentData.satAdminSsId && studentData.satStudentSsId) {
-        linkSatFiles(studentData.satAdminSsId, studentData.satStudentSsId, studentName);
-        studentData.isSatLinked = true;
-        Logger.log('SAT files linked');
-      }
-      if (testType !== 'SAT' && !studentData.isActLinked && studentData.actAdminSsId && studentData.actStudentSsId) {
-        linkActFiles(studentData.actAdminSsId, studentData.actStudentSsId, studentName);
-        studentData.isActLinked = true;
-        Logger.log('ACT files linked');
-      }
-
-      if (testType === 'SAT' && filename.includes('ACT') && filename.toLowerCase().includes('answer analysis')) {
-        newFile.setTrashed(true);
-      }
-      else if (testType === 'ACT' && filename.includes('SAT') && filename.toLowerCase().includes('answer analysis')) {
-        newFile.setTrashed(true);
-      }
-
-      if (newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
-        fileOperations.push({ file: newFile, action: 'move' });
-      }
-    }
-
-    const newParentFolder = newFolder.getParents().next();
-
-    // Perform file operations in batch
-    fileOperations.forEach(op => {
-      if (op.action === 'move') {
-        op.file.moveTo(newParentFolder);
-      }
-      else if (op.action === 'trash') {
-        op.folder.setTrashed(true);
-      }
-    });
-
-    if (isEmptyFolder(newFolder.getId()) && newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
-      newFolder.setTrashed(true);
-    }
-
-    const sourceSubFolders = sourceFolder.getFolders();
-    while (sourceSubFolders.hasNext()) {
-      const sourceSubFolder = sourceSubFolders.next();
-      const folderName = sourceSubFolder.getName();
-      let targetFolder;
-
-      if (folderName === 'Student') {
-        targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
-        studentData.studentFolderId = targetFolder.getId();
-      }
-      else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
-        targetFolder = newFolder.getParents().next().createFolder(folderName);
-      }
-      else {
-        targetFolder = newFolder.createFolder(folderName);
-      }
-
-      targetFolderName = targetFolder.getName();
-
-      if (targetFolderName.includes('ACT') && folderType.toLowerCase() === 'sat') {
-        targetFolder.setTrashed(true);
-      }
-      else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
-        targetFolder.setTrashed(true);
-      }
-      else {
-        copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, studentData);
-      }
-    }
-  } //
-  catch (err) {
-    errorNotification(err, newFolder.getId());
+    Logger.log(`Getting source folder: ${sourceFolderId}`);
+    sourceFolder = DriveApp.getFolderById(sourceFolderId);
+    Logger.log(`Getting new folder: ${newFolderId}`);
+    newFolder = DriveApp.getFolderById(newFolderId);
+    newFolderName = newFolder.getName();
+    Logger.log(`${newFolderName} folder started`);
+  } catch (e) {
+    Logger.log(`Error getting folders. sourceFolderId: ${sourceFolderId}, newFolderId: ${newFolderId}, error: ${e}`);
+    errorNotification(e, newFolderId || sourceFolderId);
+    return studentData;
   }
 
+  try {
+    var files = sourceFolder.getFiles();
+    let testType;
+    if (folderType.toLowerCase() === 'sat') {
+      testType = 'SAT';
+    } else if (folderType.toLowerCase() === 'act') {
+      testType = 'ACT';
+    } else {
+      testType = 'Test';
+    }
+    let fileOperations = [];
+    while (files.hasNext()) {
+      let file, filename, newFile, newFilename, newFileId;
+      try {
+        file = files.next();
+        const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
+        filename = file.getName();
+        if (prefixFiles.includes(filename)) {
+          filename = studentName + ' ' + filename;
+        } else if (filename.toLowerCase().includes('template')) {
+          const rootName = filename.slice(0, filename.indexOf('-') + 2);
+          filename = rootName + studentName;
+        }
+        Logger.log(`Making copy of file: ${filename} in folder: ${newFolderName}`);
+        newFile = file.makeCopy(filename, newFolder);
+        newFilename = newFile.getName().toLowerCase();
+        newFileId = newFile.getId();
+      } catch (e) {
+        Logger.log(`Error copying file. filename: ${filename}, error: ${e}`);
+        continue;
+      }
+      try {
+        if (newFilename && newFilename.includes('tutoring notes')) {
+          const ss = SpreadsheetApp.openById(newFileId);
+          const sheet = ss.getSheetByName('Session notes');
+          shId = sheet.getSheetId();
+          sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + newFileId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")');
+        }
+      } catch (e) {
+        Logger.log(`Error updating tutoring notes hyperlink. fileId: ${newFileId}, error: ${e}`);
+      }
+      // ...existing code for updating studentData and linking files...
+      try {
+        if (filename.toLowerCase().includes('answer analysis')) {
+          if (filename.includes('SAT') && testType !== 'ACT') {
+            studentData.satAdminSsId = newFileId;
+          } else if (filename.includes('ACT') && testType !== 'SAT') {
+            studentData.actAdminSsId = newFileId;
+          }
+        } else if (filename.toLowerCase().includes('student answer sheet')) {
+          if (filename.includes('SAT') && testType !== 'ACT') {
+            studentData.satStudentSsId = newFileId;
+          } else if (filename.includes('ACT') && testType !== 'SAT') {
+            studentData.actStudentSsId = newFileId;
+          }
+        } else if (filename.toLowerCase().includes('homework')) {
+          studentData.homeworkSsId = newFileId;
+        }
+        if (testType !== 'ACT' && !studentData.isSatLinked && studentData.satAdminSsId && studentData.satStudentSsId) {
+          linkSatFiles(studentData.satAdminSsId, studentData.satStudentSsId, studentName);
+          studentData.isSatLinked = true;
+          Logger.log('SAT files linked');
+        }
+        if (testType !== 'SAT' && !studentData.isActLinked && studentData.actAdminSsId && studentData.actStudentSsId) {
+          linkActFiles(studentData.actAdminSsId, studentData.actStudentSsId, studentName);
+          studentData.isActLinked = true;
+          Logger.log('ACT files linked');
+        }
+        if (testType === 'SAT' && filename.includes('ACT') && filename.toLowerCase().includes('answer analysis')) {
+          newFile.setTrashed(true);
+        } else if (testType === 'ACT' && filename.includes('SAT') && filename.toLowerCase().includes('answer analysis')) {
+          newFile.setTrashed(true);
+        }
+        if (newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
+          fileOperations.push({ file: newFile, action: 'move' });
+        }
+      } catch (e) {
+        Logger.log(`Error processing file metadata. filename: ${filename}, error: ${e}`);
+      }
+    }
+    let newParentFolder;
+    try {
+      newParentFolder = newFolder.getParents().next();
+    } catch (e) {
+      Logger.log(`Error getting parent folder for: ${newFolderName}, error: ${e}`);
+      newParentFolder = null;
+    }
+    fileOperations.forEach(op => {
+      try {
+        if (op.action === 'move' && newParentFolder) {
+          op.file.moveTo(newParentFolder);
+        } else if (op.action === 'trash') {
+          op.folder.setTrashed(true);
+        }
+      } catch (e) {
+        Logger.log(`Error in file operation (${op.action}). error: ${e}`);
+      }
+    });
+    if (isEmptyFolder(newFolder.getId()) && newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
+      try {
+        newFolder.setTrashed(true);
+      } catch (e) {
+        Logger.log(`Error trashing empty folder: ${newFolderName}, error: ${e}`);
+      }
+    }
+    const sourceSubFolders = sourceFolder.getFolders();
+    while (sourceSubFolders.hasNext()) {
+      let sourceSubFolder, folderName, targetFolder, targetFolderName;
+      try {
+        sourceSubFolder = sourceSubFolders.next();
+        folderName = sourceSubFolder.getName();
+        if (folderName === 'Student') {
+          targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
+          studentData.studentFolderId = targetFolder.getId();
+        } else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
+          targetFolder = newFolder.getParents().next().createFolder(folderName);
+        } else {
+          targetFolder = newFolder.createFolder(folderName);
+        }
+        targetFolderName = targetFolder.getName();
+        if (targetFolderName.includes('ACT') && folderType.toLowerCase() === 'sat') {
+          targetFolder.setTrashed(true);
+        } else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
+          targetFolder.setTrashed(true);
+        } else {
+          copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, studentData);
+        }
+      } catch (e) {
+        Logger.log(`Error copying subfolder. folderName: ${folderName}, error: ${e}`);
+      }
+    }
+  } catch (err) {
+    Logger.log(`General error in copyFolder: ${err}`);
+    errorNotification(err, newFolder.getId());
+  }
   return studentData;
 }
 
