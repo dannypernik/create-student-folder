@@ -102,12 +102,26 @@ function getFolderIds(sourceFolderId, parentFolderId) {
 
 function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFolderId = '1_qQNYnGPFAePo8UE5NfX72irNtZGF5kF', studentName = '_Aaron S', folderType = 'sat', studentData={}) {
   let sourceFolder, newFolder, newFolderName;
+  function withBackoff(fn, maxRetries = 5, baseDelay = 500) {
+    let attempt = 0;
+    while (true) {
+      try {
+        return fn();
+      } catch (e) {
+        if (attempt >= maxRetries) throw e;
+        let delay = baseDelay * Math.pow(2, attempt) + Math.floor(Math.random() * 200);
+        Logger.log(`Transient error: ${e}. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        Utilities.sleep(delay);
+        attempt++;
+      }
+    }
+  }
   try {
     Logger.log(`Getting source folder: ${sourceFolderId}`);
-    sourceFolder = DriveApp.getFolderById(sourceFolderId);
+    sourceFolder = withBackoff(() => DriveApp.getFolderById(sourceFolderId));
     Logger.log(`Getting new folder: ${newFolderId}`);
-    newFolder = DriveApp.getFolderById(newFolderId);
-    newFolderName = newFolder.getName();
+    newFolder = withBackoff(() => DriveApp.getFolderById(newFolderId));
+    newFolderName = withBackoff(() => newFolder.getName());
     Logger.log(`${newFolderName} folder started`);
   } catch (e) {
     Logger.log(`Error getting folders. sourceFolderId: ${sourceFolderId}, newFolderId: ${newFolderId}, error: ${e}`);
@@ -116,7 +130,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
   }
 
   try {
-    var files = sourceFolder.getFiles();
+    var files = withBackoff(() => sourceFolder.getFiles());
     let testType;
     if (folderType.toLowerCase() === 'sat') {
       testType = 'SAT';
@@ -129,9 +143,9 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
     while (files.hasNext()) {
       let file, filename, newFile, newFilename, newFileId;
       try {
-        file = files.next();
+        file = withBackoff(() => files.next());
         const prefixFiles = ['Tutoring notes', 'ACT review sheet', 'SAT review sheet'];
-        filename = file.getName();
+        filename = withBackoff(() => file.getName());
         if (prefixFiles.includes(filename)) {
           filename = studentName + ' ' + filename;
         } else if (filename.toLowerCase().includes('template')) {
@@ -139,19 +153,19 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
           filename = rootName + studentName;
         }
         Logger.log(`Making copy of file: ${filename} in folder: ${newFolderName}`);
-        newFile = file.makeCopy(filename, newFolder);
-        newFilename = newFile.getName().toLowerCase();
-        newFileId = newFile.getId();
+        newFile = withBackoff(() => file.makeCopy(filename, newFolder));
+        newFilename = withBackoff(() => newFile.getName().toLowerCase());
+        newFileId = withBackoff(() => newFile.getId());
       } catch (e) {
         Logger.log(`Error copying file. filename: ${filename}, error: ${e}`);
         continue;
       }
       try {
         if (newFilename && newFilename.includes('tutoring notes')) {
-          const ss = SpreadsheetApp.openById(newFileId);
-          const sheet = ss.getSheetByName('Session notes');
-          shId = sheet.getSheetId();
-          sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + newFileId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")');
+          const ss = withBackoff(() => SpreadsheetApp.openById(newFileId));
+          const sheet = withBackoff(() => ss.getSheetByName('Session notes'));
+          shId = withBackoff(() => sheet.getSheetId());
+          withBackoff(() => sheet.getRange('G3').setValue('=hyperlink("https://docs.google.com/spreadsheets/d/' + newFileId + '/edit?gid=' + shId + '#gid=' + shId + '&range=B"&match(G2,B1:B,0)-1,"Go to latest session")'));
         }
       } catch (e) {
         Logger.log(`Error updating tutoring notes hyperlink. fileId: ${newFileId}, error: ${e}`);
@@ -197,7 +211,7 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
     }
     let newParentFolder;
     try {
-      newParentFolder = newFolder.getParents().next();
+      newParentFolder = withBackoff(() => newFolder.getParents().next());
     } catch (e) {
       Logger.log(`Error getting parent folder for: ${newFolderName}, error: ${e}`);
       newParentFolder = null;
@@ -205,40 +219,40 @@ function copyFolder(sourceFolderId = '1yqQx_qLsgqoNiDoKR9b63mLLeOiCoTwo', newFol
     fileOperations.forEach(op => {
       try {
         if (op.action === 'move' && newParentFolder) {
-          op.file.moveTo(newParentFolder);
+          withBackoff(() => op.file.moveTo(newParentFolder));
         } else if (op.action === 'trash') {
-          op.folder.setTrashed(true);
+          withBackoff(() => op.folder.setTrashed(true));
         }
       } catch (e) {
         Logger.log(`Error in file operation (${op.action}). error: ${e}`);
       }
     });
-    if (isEmptyFolder(newFolder.getId()) && newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
+    if (withBackoff(() => isEmptyFolder(newFolder.getId())) && newFolderName.includes(folderType.toUpperCase()) && !newFolderName.includes(studentName)) {
       try {
-        newFolder.setTrashed(true);
+        withBackoff(() => newFolder.setTrashed(true));
       } catch (e) {
         Logger.log(`Error trashing empty folder: ${newFolderName}, error: ${e}`);
       }
     }
-    const sourceSubFolders = sourceFolder.getFolders();
+    const sourceSubFolders = withBackoff(() => sourceFolder.getFolders());
     while (sourceSubFolders.hasNext()) {
       let sourceSubFolder, folderName, targetFolder, targetFolderName;
       try {
-        sourceSubFolder = sourceSubFolders.next();
-        folderName = sourceSubFolder.getName();
+        sourceSubFolder = withBackoff(() => sourceSubFolders.next());
+        folderName = withBackoff(() => sourceSubFolder.getName());
         if (folderName === 'Student') {
-          targetFolder = newFolder.createFolder(studentName + ' ' + testType + ' prep');
-          studentData.studentFolderId = targetFolder.getId();
+          targetFolder = withBackoff(() => newFolder.createFolder(studentName + ' ' + testType + ' prep'));
+          studentData.studentFolderId = withBackoff(() => targetFolder.getId());
         } else if (newFolderName.includes(folderType.toUpperCase()) && newFolderName !== studentName + ' ' + testType + ' prep') {
-          targetFolder = newFolder.getParents().next().createFolder(folderName);
+          targetFolder = withBackoff(() => newFolder.getParents().next().createFolder(folderName));
         } else {
-          targetFolder = newFolder.createFolder(folderName);
+          targetFolder = withBackoff(() => newFolder.createFolder(folderName));
         }
-        targetFolderName = targetFolder.getName();
+        targetFolderName = withBackoff(() => targetFolder.getName());
         if (targetFolderName.includes('ACT') && folderType.toLowerCase() === 'sat') {
-          targetFolder.setTrashed(true);
+          withBackoff(() => targetFolder.setTrashed(true));
         } else if (targetFolderName.includes('SAT') && folderType.toLowerCase() === 'act') {
-          targetFolder.setTrashed(true);
+          withBackoff(() => targetFolder.setTrashed(true));
         } else {
           copyFolder(sourceSubFolder.getId(), targetFolder.getId(), studentName, folderType, studentData);
         }
