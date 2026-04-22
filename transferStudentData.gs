@@ -25,6 +25,7 @@ function transferOldStudentData() {
 
 function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
   let ui, newAdminSs, newAdminSsId;
+  let continueSync = true;
   try {
     ui = SpreadsheetApp.getUi();
     let htmlOutput = HtmlService
@@ -47,8 +48,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   const newStudentSsId = newAdminSs.getSheetByName('Student responses').getRange('B1').getValue();
 
   // temporarily relax permissions
-  DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-  DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
+  // DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  // DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.EDIT);
 
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
@@ -244,7 +245,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
               Logger.log("Exiting loop after 5 minutes and 15 seconds.");
-              return false;
+              continueSync = false;
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
@@ -299,8 +300,8 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     newStudentData.getRange('A3').setValue(initialImportFunction);
     newStudentData.getRange('H3').setValue('');
     newStudentData.getRange('T3').setValue('');
-    DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
-    DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+    // DriveApp.getFileById(oldAdminSsId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    // DriveApp.getFileById(newStudentSsId).setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
     Logger.log('Data cleanup complete.')
   }
 
@@ -310,4 +311,6 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
       .setHeight(50);
     ui.showModalDialog(htmlOutput, 'Data transfer complete');
   }
+
+  return continueSync;
 }
