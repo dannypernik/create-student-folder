@@ -247,7 +247,7 @@ function linkSatFiles(satAdminSsId, satStudentSsId, studentName='') {
   const satStudentFile = DriveApp.getFileById(satStudentSsId);
   satAdminFile.addEditor(SERVICE_ACCOUNT_EMAIL);
   satStudentFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-  
+
   try {
     satStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
   }
@@ -308,8 +308,13 @@ function linkActFiles(actAdminSsId, actStudentSsId, studentName='') {
   actAdminFile.addEditor(SERVICE_ACCOUNT_EMAIL);
   actStudentFile = DriveApp.getFileById(actStudentSsId);
   actStudentFile.addEditor(SERVICE_ACCOUNT_EMAIL);
-  actStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
-  
+  try {
+    actStudentFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+  }
+  catch(e) {
+    Logger.log('Unable to set sharing of ACT student file.');
+  }
+
   const actAdminSs = SpreadsheetApp.openById(actAdminSsId);
   actAdminSs.getSheetByName('Student responses').getRange('G1').setValue(studentName);
   actAdminSs.getSheetByName('Student responses').getRange('B1').setValue(actStudentSsId);
