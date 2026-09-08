@@ -2,7 +2,10 @@ function updateConceptData(adminSsId, studentSsId = null) {
   if (!adminSsId) {
     const adminSs = SpreadsheetApp.getActiveSpreadsheet();
     adminSsId = adminSs.getId();
-    studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
+    const studentResponsesSheet = adminSs.getSheetByName('Student responses');
+    if (studentResponsesSheet) {
+      studentSsId = studentResponsesSheet.getRange('B1').getValue();
+    }
   }
 
   try {
@@ -85,6 +88,14 @@ function updateConceptData(adminSsId, studentSsId = null) {
           .setForegroundColor(levelStyle.getForegroundColorObject())
           .setUnderline(true) // ← add or remove underline
           .build();
+        
+        const skippedRowStyle = SpreadsheetApp.newTextStyle()
+          .setBold(levelStyle.isBold())
+          .setUnderline(false)
+          .setFontSize(levelStyle.getFontSize())
+          .setFontFamily(levelStyle.getFontFamily())
+          .setForegroundColor('#b7b7b7')
+          .build();
 
         const newConceptRows = shNewVals.map(row => row[1]);
         
@@ -113,7 +124,12 @@ function updateConceptData(adminSsId, studentSsId = null) {
               shNewVals[qRow][levelStartCol + 1] = level + '.' + qNum;
 
               for (let col = 0; col < 3; col++) {
-                shTextStyles[qRow][levelStartCol + 1 + col] = baseTextStyleRow[col];
+                if(SKIPPED_IDS.includes(dataRow[0])) {
+                  shTextStyles[qRow][levelStartCol + 1 + col] = skippedRowStyle;
+                } //
+                else {
+                  shTextStyles[qRow][levelStartCol + 1 + col] = baseTextStyleRow[col];
+                }
               }
               // Apply underline to Level headers
               shTextStyles[levelRow][levelStartCol + 1] = newLevelStyle;
@@ -174,8 +190,10 @@ function updateConceptData(adminSsId, studentSsId = null) {
 
         }
 
-        updateLevelHeaders(ss, isAdminSs);
-        modifyConceptFormatRules(sh, isAdminSs);
+        if (studentSsId) {  // prevent update on public sheet
+          updateLevelHeaders(ss, isAdminSs);
+          modifyConceptFormatRules(sh, isAdminSs);
+        }
         
         sh.getRange('A1:A').setFontColor('#ffffff');
         sh.getRange('E1:E').setFontColor('#ffffff');
@@ -470,7 +488,7 @@ function modifyConceptFormatRules(sheet, isAdminSs) {
       // Modify the rule
       rule = SpreadsheetApp.newConditionalFormatRule()
         .setRanges([sheet.getRange('A10:A'), sheet.getRange('E10:E'), sheet.getRange('I10:I')])
-        .whenFormulaSatisfied('=and(len(A10)<>8,B10<>"",B9<>"")')
+        .whenFormulaSatisfied('=and(len(A10)<>8,len(A10)<>9,B10<>"",B9<>"")')
         .setBackground(alertColor)
         .setFontColor('#ffffff')
         .build();

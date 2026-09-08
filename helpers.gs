@@ -215,6 +215,33 @@ function addStudentToData(studentData, allStudentsData=[]) {
   return allStudentsData;
 }
 
+
+function setQuestionRowHeights(idCol, heightCol, startRow=6) {
+  const idValues = idCol.getValues();
+  const heightValues = heightCol.getValues();
+  const sheet = idCol.getSheet()
+
+  let row = startRow;
+
+  try {
+    Logger.log('starting rowHeights');
+    while (idValues[row - 1] && idValues[row - 1][0] != '') {
+      const rowHeight = heightValues[row - 1][0]; // rowHeights including whitespace hard-coded in Rev sheet backend
+      sheet.setRowHeight(row, rowHeight);
+      row++;
+    }
+  } catch (err) {
+    if (err.message.includes('Invalid argument')) {
+      SpreadsheetApp.getUi().alert('Error: Image not found');
+    } //
+    else {
+      SpreadsheetApp.getUi().alert(err);
+    }
+  }
+  return row;
+}
+
+
 function getSatTestCodes() {
   const practiceTestDataSheet = SpreadsheetApp.openById('1KidSURXg5y-dQn_gm1HgzUDzaICfLVYameXpIPacyB0').getSheetByName('Practice test data');
   const lastFilledRow = getLastFilledRow(practiceTestDataSheet, 1);
@@ -279,7 +306,7 @@ function updateActTestSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const templateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
-  const legacyTemplateSheet = templateSs.getSheetByName('Admin legacy');
+  const legacyTemplateSheet = templateSs.getSheetByName('ACT admin legacy');
   const dataSheet = ss.getSheetByName('Data');
   const testFilterCell = dataSheet.getRange('M2');
   const officialScoringCell = dataSheet.getRange('O2');
@@ -294,11 +321,11 @@ function updateActTestSheets() {
 
   if (isScoringOfficial || button === ui.Button.YES) {
     ui.alert('Template SS has not been set up to enable official scoring.');
-    enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced official');
+    enhancedTemplateSheet = templateSs.getSheetByName('ACT admin enhanced');
     isScoringOfficial = true;
   } //
   else if (isScoringOfficial === false || button === ui.Button.NO) {
-    enhancedTemplateSheet = templateSs.getSheetByName('Admin enhanced adjusted');
+    enhancedTemplateSheet = templateSs.getSheetByName('ACT admin enhanced');
     isScoringOfficial = false;
   } //
   else {
@@ -405,7 +432,7 @@ function updateActTestSheets() {
   }
 
   dataSheet.getRange(2, 13, testCodes.length, 3).setValue('');
-  var htmlOutput = HtmlService.createHtmlOutput('Scoring formulas have been updated for all tests')
+  const htmlOutput = HtmlService.createHtmlOutput('Scoring formulas have been updated for all tests')
     .setWidth(250)
     .setHeight(100);
   SpreadsheetApp.getUi().showModalDialog(htmlOutput, `Update complete`);
@@ -696,10 +723,10 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
   const studentSsId = adminSs.getSheetByName('Student responses').getRange('B1').getValue();
   const studentSs = SpreadsheetApp.openById(studentSsId);
   const actTemplateSs = SpreadsheetApp.openById(TEMPLATE_SHEETS_SS_ID);
-  const adminTemplateSheet = actTemplateSs.getSheetByName('Admin legacy');
-  const adminEnhancedTemplateSheet = actTemplateSs.getSheetByName('Admin enhanced adjusted');
-  const studentTemplateSheet = actTemplateSs.getSheetByName('Student legacy');
-  const studentEnhancedTemplateSheet = actTemplateSs.getSheetByName('Student enhanced');
+  const adminTemplateSheet = actTemplateSs.getSheetByName('ACT admin legacy');
+  const adminEnhancedTemplateSheet = actTemplateSs.getSheetByName('ACT admin enhanced');
+  const studentTemplateSheet = actTemplateSs.getSheetByName('ACT student legacy');
+  const studentEnhancedTemplateSheet = actTemplateSs.getSheetByName('ACT student enhanced');
 
   const templateSheet = adminSs.getSheetByName('201904');
   const templateHeaderCell = templateSheet.getRange('A1');
@@ -735,7 +762,7 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
         Logger.log(`Adding ${testCode} sheet to ${obj.ss.getName()}`);
 
         let sheetToCopy = obj.templateSheet;
-        if (testCode.includes('MC')) {
+        if (testCode > '202502') {
           sheetToCopy = obj.enhancedTemplateSheet;
         }
 
@@ -748,6 +775,20 @@ function addActTestSheets(adminSsId, adminIndexAdjustment=2) {
 
         if (obj.isAdmin) {
           setScoreColor(newSheet);
+        }
+
+        if (!testCode.toLowerCase().includes('mc')) {
+          const truncatedRangesA1 = ['A45:D54', 'E46:H49', 'I32:L40', 'M39:P44'];
+          for (let rangeA1 of truncatedRangesA1) {
+            newSheet.getRange(rangeA1).clear();
+          }
+
+          if (obj.isAdmin) {
+            const scoreCells = ['B3', 'F3', 'J3', 'N3'];
+            const makScoringFormulaR1C1 = '=IF(COUNTA(R5C:R54C)>15,VLOOKUP(R3C[-1] & COUNTIFS(R5C[1]:R54C[1],"",R5C[-1]:R54C[-1],"<>"),Scoring!R1C1:R283C63,HLOOKUP(R1C2,Scoring!R1C1:R2C63,2,FALSE),FALSE),"")'
+            
+            newSheet.getRangeList(scoreCells).setFormulaR1C1(makScoringFormulaR1C1);
+          }
         }
 
         const testCodeIndex = testCodes.indexOf(testCode);
@@ -960,10 +1001,10 @@ function formatDateYYYYMMDD(dateStr) {
 
 
 function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
-  var sheetId = sheet.getSheetId();
-  var url_base = spreadsheet.getUrl().replace(/edit$/, '');
+  const sheetId = sheet.getSheetId();
+  const url_base = spreadsheet.getUrl().replace(/edit$/, '');
 
-  var url_ext =
+  const url_ext =
     'export?exportFormat=pdf&format=pdf' +
     '&gid=' + sheetId +
     // following parameters are optional...
@@ -979,8 +1020,8 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
     '&pagenumbers=false' + //hide optional headers and footers
     '&gridlines=false' + // hide gridlines
     '&fzr=true'; // false = do not repeat row headers (frozen rows) on each page
-  var url_options = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
-  var response = (function backoff(i) {
+  const url_options = { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  const response = (function backoff(i) {
     Utilities.sleep(Math.pow(2, i) * 1000);
     let data = UrlFetchApp.fetch(url_base + url_ext, url_options);
     if (data.getResponseCode() !== 200) {
@@ -990,11 +1031,11 @@ function savePdf(spreadsheet, sheet, pdfName, pdfFolderId) {
       return data;
     }
   })(1);
-  var blob = response
+  const blob = response
     .getBlob()
     .getAs('application/pdf')
     .setName(pdfName + '.pdf');
-  var folder = DriveApp.getFolderById(pdfFolderId);
+  const folder = DriveApp.getFolderById(pdfFolderId);
   folder.createFile(blob);
 }
 
@@ -1046,7 +1087,7 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
   const adminSs = SpreadsheetApp.openById(adminSsId);
   const adminFolder = DriveApp.getFileById(adminSsId).getParents().next();
   const adminSubfolders = adminFolder.getFolders();
-  let studentName, scoreReportFolderId, studentFolder, revBackendSheet;
+  let studentName, scoreReportFolderId, studentFolder, revBackendSheet, dataSheet;
 
   if (ssType === 'sat') {
     revBackendSheet = adminSs.getSheetByName('Rev sheet backend');
@@ -1056,7 +1097,7 @@ function getScoreReportFolderId(adminSsId, ssType='sat') {
     }
   } //
   else if (ssType === 'act') {
-    const dataSheet = adminSs.getSheetByName('Data');
+    dataSheet = adminSs.getSheetByName('Data');
     scoreReportFolderId = dataSheet.getRange('W1').getValue();
   }
 
@@ -1176,4 +1217,47 @@ function getFormulasAndValues(range) {
     }
   }
   return formulas;
+}
+
+
+function orderTestSheetsAlphabetically(ss = SpreadsheetApp.getActiveSpreadsheet(), testDataSheetName = 'Test data', analysisPrefix = 'Analysis ') {
+  const testDataSheet = ss.getSheetByName(testDataSheetName);
+  const lastFilledRow = getLastFilledRow(testDataSheet, 1);
+  const testCodes = new Set(
+    testDataSheet
+      .getRange(2, 1, lastFilledRow - 1)
+      .getValues()
+      .map((row) => row[0])
+      .filter((code) => code !== '')
+  );
+
+  const matchedSheets = [];
+
+  ss.getSheets().forEach((sheet) => {
+    const name = sheet.getName();
+
+    if (testCodes.has(name)) {
+      matchedSheets.push({ sheet, testCode: name, isAnalysis: false });
+    } //
+    else if (name.startsWith(analysisPrefix) && testCodes.has(name.slice(analysisPrefix.length))) {
+      matchedSheets.push({ sheet, testCode: name.slice(analysisPrefix.length), isAnalysis: true });
+    }
+  });
+
+  if (matchedSheets.length === 0) {
+    return;
+  }
+
+  // Keep the reordered block anchored where the matched sheets currently start
+  const startPosition = Math.min(...matchedSheets.map((match) => match.sheet.getIndex()));
+
+  matchedSheets.sort((a, b) => {
+    const codeComparison = a.testCode.localeCompare(b.testCode, undefined, { sensitivity: 'base' });
+    return codeComparison !== 0 ? codeComparison : a.isAnalysis - b.isAnalysis;
+  });
+
+  matchedSheets.forEach((match, i) => {
+    ss.setActiveSheet(match.sheet);
+    ss.moveActiveSheet(startPosition + i);
+  });
 }

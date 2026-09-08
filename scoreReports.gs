@@ -218,6 +218,18 @@ async function createActScoreReportPdf(adminSsId=SpreadsheetApp.getActiveSpreads
   }
 }
 
+function createTestReviewSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const testReviewSheet = ss.getSheetByName('Practice test review');
+  const idCol = testReviewSheet.getRange('B1:B');
+  const heightsCol = testReviewSheet.getRange('E1:E');
+  const endRow = setQuestionRowHeights(idCol, heightsCol);
+
+  testReviewSheet.hideRows(endRow, testReviewSheet.getMaxRows() - endRow + 1);
+
+  savePdfSheet(ss.getId(), testReviewSheet.getSheetId(), testReviewSheet.getRange('C1').getValue());
+}
+
 
 async function mergePDFs(fileIds, destinationFolderId, name = 'merged.pdf', attempt = 1) {
   const validFileIds = fileIds.filter(isValidPdf);

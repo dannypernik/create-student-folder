@@ -25,7 +25,7 @@ function transferOldStudentData() {
 
 function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().getId(), startTime=new Date().getTime()) {
   let ui, newAdminSs, newAdminSsId;
-  let continueSync = true;
+
   try {
     ui = SpreadsheetApp.getUi();
     let htmlOutput = HtmlService
@@ -54,8 +54,6 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
   let oldAdminSs, newStudentData, initialImportFunction;
   try {
     oldAdminSs = SpreadsheetApp.openById(oldAdminSsId);
-    
-
     const newStudentSs = SpreadsheetApp.openById(newStudentSsId);
     const maxDuration = 5.25 * 60 * 1000; // 5 minutes and 15 seconds in milliseconds
     newStudentData = newAdminSs.getSheetByName('Student responses');
@@ -245,7 +243,7 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
             const currentTime = new Date().getTime();
             if (currentTime - startTime > maxDuration) {
               Logger.log("Exiting loop after 5 minutes and 15 seconds.");
-              continueSync = false;
+              return false;
             }
             let newAdminSheetValues = newAdminRanges[i].getValues();
             let newAdminSheetFormulas = newAdminRanges[i].getFormulas();
@@ -312,5 +310,5 @@ function syncSatStudentData(oldAdminSsId=SpreadsheetApp.getActiveSpreadsheet().g
     ui.showModalDialog(htmlOutput, 'Data transfer complete');
   }
 
-  return continueSync;
+  return true;
 }

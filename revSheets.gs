@@ -139,7 +139,12 @@ function createRevSheet(sub, subIndex) {
         }
 
         revSubjectFolderIdCell.setValue(revSubjectFolderId);
-        studentSs.getSheetByName('Question bank data').getRange(5 + subIndex, 21).setValue(revSubjectFolderId);
+        let studentDataSheet = studentSs.getSheetByName('Question bank data');
+
+        if (!studentDataSheet) {
+          studentDataSheet = studentSs.getSheetByName('All data');
+        }
+        studentDataSheet.getRange(5 + subIndex, 21).setValue(revSubjectFolderId);
       }
     }
     catch(err) {
@@ -156,31 +161,9 @@ function createRevSheet(sub, subIndex) {
     revBackend.getRange(2, 2 + subBackendOffset, revBackend.getMaxRows() - 1).copyValuesToRange(revBackend.getSheetId(), 2 + subBackendOffset, 2 + subBackendOffset, 2, 2);
 
     var idCol = revSheet.getRange('B1:B');
-    var values = idCol.getValues(); // get all data in one call
-    var heights = revSheet.getRange('E1:E');
-    var heightVals = heights.getValues();
-    //var imgContainerWidth = revSheet.getColumnWidth(4);
-    var row = 6;
+    var heightsCol= revSheet.getRange('E1:E');
 
-    Logger.log('starting rowHeights');
-
-    try {
-      while (values[row - 1] && values[row - 1][0] != '') {
-        var questionId = values[row - 1][0];
-        var rowHeight = heightVals[row - 1][0]; // rowHeights including whitespace hard-coded in Rev sheet backend
-        revSheet.setRowHeight(row, rowHeight);
-        Logger.log(questionId + ' rowHeight: ' + rowHeight);
-        row++;
-      }
-    } catch (err) {
-      if (err.message.includes('Invalid argument')) {
-        SpreadsheetApp.getUi().alert('Error: Image not found');
-      } //
-      else {
-        SpreadsheetApp.getUi().alert(err);
-      }
-      return;
-    }
+    const endRow = setQuestionRowHeights(idCol, heightsCol);
 
     let revDataLastQuestionCell, revDataLastQuestion, newRevSheetNumber;
     let revDataSubjectColumn = 2 + subIndex * 3;
@@ -203,7 +186,7 @@ function createRevSheet(sub, subIndex) {
     revSheet.getRange('F1:F').setFontColor('#9900ff');
 
     // hide unneeded rows, column A+G
-    revSheet.hideRows(row, revSheet.getMaxRows() - row + 1);
+    revSheet.hideRows(endRow, revSheet.getMaxRows() - endRow - 1);
     revSheet.hideColumns(3);
     revSheet.hideColumns(6);
     revSheet.showColumns(5);
@@ -252,8 +235,8 @@ function createRevSheet(sub, subIndex) {
     Logger.log(sub + ' Rev key #' + newRevSheetNumber + ' saved');
     //*/
 
-    var dataToCopy = revSheet.getRange(6, 1, row - 5, 2).getValues();
-    revDataSheet.getRange(lastFilledQuestionRow + 1, revDataSubjectColumn, row - 5, 2).setValues(dataToCopy);
+    var dataToCopy = revSheet.getRange(6, 1, endRow - 5, 2).getValues();
+    revDataSheet.getRange(lastFilledQuestionRow + 1, revDataSubjectColumn, endRow - 5, 2).setValues(dataToCopy);
 
     revSheet.hideSheet();
     revSheet.showRows(1, revSheet.getMaxRows());
